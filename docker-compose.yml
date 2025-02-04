@@ -1,0 +1,21 @@
+services:
+  api:
+    tty: true
+    build:
+      context: ./api/
+    restart: unless-stopped
+    container_name: songy-api
+    volumes:
+      - ./api/src:/usr/src/app/src
+      - ./.env:/usr/src/.env
+      - ./shared:/usr/src/shared
+    ports:
+      - ${API_PORT}:${API_PORT}
+  web:
+    tty: true
+    build:
+      context: ./web/
+    restart: unless-stopped
+    container_name: songy-web
+    ports:
+      - 80:80
