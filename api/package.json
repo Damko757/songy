@@ -12,6 +12,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.0",
     "@types/express": "^5.0.0",
     "axios": "^1.7.9",
     "body-parser": "^1.20.3",
