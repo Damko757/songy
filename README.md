@@ -7,12 +7,12 @@ The objective of this project is to create simple self-hosted YT downloader, tha
 Clone this repository:
 `git clone https://github.com/Damko757/songy`
 
-And start the containers (you need to have (Docker installed)[https://github.com/docker/docker-install]):
+And start the containers (you need to have [Docker installed](https://github.com/docker/docker-install)):
 `sudo docker compose up --build`
 
 # Technicalities
 
-The project is separated into two parts: (WEB/UI)[#web] and (API/BE)[#api]. If needed, only the _api_ can be used (e. g. for custom scripts).
+The project is separated into two parts: [WEB/UI](#web) and [API/BE](#api). If needed, only the _api_ can be used (e. g. for custom scripts).
 
 ## Shared && .env
 
@@ -34,7 +34,7 @@ The project is separated into two parts: (WEB/UI)[#web] and (API/BE)[#api]. If n
 ## Web
 
 > TODO
-> This is web UI for simple usage of the (API)[#api]
+> This is web UI for simple usage of the [API](#api)
 
 # Contribution
 
