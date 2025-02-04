@@ -1,0 +1,3 @@
+1. Add Spotify metadata
+2. Add Genius metadata
+3. ...
