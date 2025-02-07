@@ -27,10 +27,9 @@ export class Spotify {
       const expiresDate = new Date();
       expiresDate.setTime(expiresDate.getTime() + 60 * 60 * 1000);
       Spotify.bearerExpiresAt = expiresDate;
-
-      this._axiosInstance.defaults.headers.common.Authorization =
-        "Bearer " + Spotify.bearerToken;
     }
+    this._axiosInstance.defaults.headers.common.Authorization =
+      "Bearer " + Spotify.bearerToken;
 
     return this._axiosInstance;
   }
