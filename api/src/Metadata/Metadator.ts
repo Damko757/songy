@@ -1,6 +1,7 @@
 import ytdl from "@distube/ytdl-core";
 import { Metadata } from "./Metadata";
 import { YTMusicMetadata } from "./YTMusicMetadata";
+import { SpotifyMetadata } from "./SpotifyMetadata";
 
 /**
  * His role is to extract and find metadata
@@ -20,15 +21,15 @@ export class Metadator {
   }
 
   /**
-   * @returns `Metadata` object only with useful data.
+   * @returns `Metadata` objects only with useful data.
    * It tries from multiple source - ytMusic, Spotify, ....
    */
-  async metaData(): Promise<Metadata | null> {
-    const Metadatas: (typeof Metadata)[] = [YTMusicMetadata];
+  async metaDatas(): Promise<Metadata[] | null> {
+    const Metadatas: (typeof Metadata)[] = [YTMusicMetadata, SpotifyMetadata];
     const raw = await this.rawMetaData();
     for (const meta of Metadatas) {
-      const metaInstance = meta.create(raw);
-      if (metaInstance) return metaInstance;
+      const metaInstances = await meta.create(raw);
+      if (metaInstances != null) return metaInstances;
     }
     return null;
   }

@@ -12,6 +12,7 @@ export abstract class Metadata {
   thumbnails?: { url: string; width: number; height: number }[];
   publisher?: string;
   releaseDate?: string; // ISO date
+  duration?: number; // in ms
   protected constructor(title: string, artist: string) {
     this.title = title;
     this.artist = artist;
@@ -21,7 +22,9 @@ export abstract class Metadata {
    * Creates instance from raw videoInfo
    * @returns instances if possible, otherwise null
    */
-  static create(raw: ytdl.videoInfo): Metadata | null {
+  static create(
+    raw: ytdl.videoInfo
+  ): Metadata[] | null | Promise<Metadata[] | null> {
     throw new Error("Unitialized class");
   }
 }
