@@ -18,10 +18,18 @@ The project is separated into two parts: [WEB/UI](#web) and [API/BE](#api). If n
 
 ### .env options
 
+For sample .env file, check `.sample.env`
+
 | Key      | Description                 |
 | -------- | --------------------------- |
 | API_PORT | Port, the api will run on   |
 | API_URL  | URL for _Web_ to connect to |
+
+| Spotify               |                                                                             |
+| --------------------- | --------------------------------------------------------------------------- |
+| ENABLE_SPOTIFY        | Defines if Spotify API should be used. If true, SPOTIFY\_\* keys are needed |
+| SPOTIFY_CLIENT_ID     | Your ClientId (https://developer.spotify.com/documentation/web-api)         |
+| SPOTIFY_CLIENT_SECRET | Your ClientSecret                                                           |
 
 <a id="api"></a>
 
