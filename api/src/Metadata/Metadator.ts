@@ -3,6 +3,11 @@ import { Metadata } from "./Metadata";
 import { YTMusicMetadata } from "./YTMusicMetadata";
 import { SpotifyMetadata } from "./SpotifyMetadata";
 
+export interface MetadatorResponse {
+  spotify: SpotifyMetadata[] | null;
+  ytMusic: YTMusicMetadata[] | null;
+}
+
 /**
  * His role is to extract and find metadata
  */
@@ -24,13 +29,30 @@ export class Metadator {
    * @returns `Metadata` objects only with useful data.
    * It tries from multiple source - ytMusic, Spotify, ....
    */
-  async metaDatas(): Promise<Metadata[] | null> {
-    const Metadatas: (typeof Metadata)[] = [YTMusicMetadata, SpotifyMetadata];
+  async metaDatas() {
+    const Metadatas: Record<keyof MetadatorResponse, typeof Metadata> = {
+      ytMusic: YTMusicMetadata,
+      spotify: SpotifyMetadata,
+    };
     const raw = await this.rawMetaData();
-    for (const meta of Metadatas) {
-      const metaInstances = await meta.create(raw);
-      if (metaInstances != null) return metaInstances;
-    }
-    return null;
+    const response: MetadatorResponse = {
+      spotify: null,
+      ytMusic: null,
+    };
+
+    await Promise.all(
+      Object.keys(Metadatas).map(
+        (key) =>
+          new Promise(async (resolve, reject) => {
+            response[key as keyof MetadatorResponse] = await Metadatas[
+              key as keyof MetadatorResponse
+            ].create(raw);
+
+            resolve(response[key as keyof MetadatorResponse]);
+          })
+      )
+    );
+
+    return response;
   }
 }

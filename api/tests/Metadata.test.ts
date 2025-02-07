@@ -1,31 +1,29 @@
 import { describe, it, expect } from "bun:test";
 import { Metadator } from "../src/Metadata/Metadator";
 
-describe("Metadata from song URL", () => {
-  it("YT Music, CarpetMan - Make it Lower", () => {
+describe("Metadata from YT URL", () => {
+  it("YT Music, CarpetMan - Make it Lower", async () => {
     const metadator = new Metadator("o5NDhQgVzoo");
-    expect(metadator.metaDatas()).resolves.toMatchObject([
-      {
-        title: "Make It Lower",
-        artist: "Carpetman",
-        album: "Make It Lower",
-        releaseDate: "2024-12-19",
-      },
-    ]);
+    expect((await metadator.metaDatas()).ytMusic?.[0]).toMatchObject({
+      title: "Make It Lower",
+      artist: "Carpetman",
+      album: "Make It Lower",
+      releaseDate: "2024-12-19",
+    });
   });
-  it("YT, CarpetMan - Make it Lower", async () => {
+  it("Spotify, CarpetMan - Make it Lower", async () => {
     const metadator = new Metadator("sduDiIGqvfQ");
     const metas = await metadator.metaDatas();
-    expect(metas?.at(0)).toMatchObject({
+    expect(metas.spotify?.[0]).toMatchObject({
       artist: "Carpetman",
       title: "Make It Lower",
       album: "Make It Lower",
       releaseDate: "2024-12-19",
     });
   });
-  it("YT, Stephen - Crosfire", async () => {
+  it("Spotify, Stephen - Crosfire", async () => {
     const metadator = new Metadator("eRgjK23taLw");
-    expect((await metadator.metaDatas())?.[0]).toMatchObject({
+    expect((await metadator.metaDatas())?.spotify?.[0]).toMatchObject({
       title: "Crossfire",
       artist: "Stephen",
       album: "Crossfire",
