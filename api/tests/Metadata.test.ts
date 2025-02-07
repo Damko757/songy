@@ -1,34 +1,35 @@
 import { describe, it, expect } from "bun:test";
-import ytdl from "@distube/ytdl-core";
-import fs from "fs";
 import { Metadator } from "../src/Metadata/Metadator";
-import { release } from "os";
-import type { title } from "process";
 
 describe("Metadata from song URL", () => {
-  it.only("YT Music, CarpetMan - Make it Lower", () => {
+  it("YT Music, CarpetMan - Make it Lower", () => {
     const metadator = new Metadator("o5NDhQgVzoo");
-    expect(metadator.metaData()).resolves.toMatchObject({
-      title: "Make It Lower",
+    expect(metadator.metaDatas()).resolves.toMatchObject([
+      {
+        title: "Make It Lower",
+        artist: "Carpetman",
+        album: "Make It Lower",
+        releaseDate: "2024-12-19",
+      },
+    ]);
+  });
+  it("YT, CarpetMan - Make it Lower", async () => {
+    const metadator = new Metadator("sduDiIGqvfQ");
+    const metas = await metadator.metaDatas();
+    expect(metas?.at(0)).toMatchObject({
       artist: "Carpetman",
+      title: "Make It Lower",
       album: "Make It Lower",
       releaseDate: "2024-12-19",
     });
   });
-  it.only("YT, CarpetMan - Make it Lower", () => {
-    const metadator = new Metadator("sduDiIGqvfQ");
-    expect(metadator.metaData()).resolves.toMatchObject({
-      artist: "Carpetman",
-      title: "Make it Lower",
-    });
-  });
-  it("YT, Stephen - Crosfire", () => {
+  it("YT, Stephen - Crosfire", async () => {
     const metadator = new Metadator("eRgjK23taLw");
-    expect(metadator.metaData()).resolves.toMatchObject({
+    expect((await metadator.metaDatas())?.[0]).toMatchObject({
       title: "Crossfire",
       artist: "Stephen",
-      album: "Make It Lower",
-      releaseDate: "2022-12-19",
+      album: "Crossfire",
+      releaseDate: "2015-12-07",
     });
   });
 });
