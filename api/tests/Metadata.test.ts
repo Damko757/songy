@@ -6,7 +6,7 @@ describe("Metadata from YT URL", () => {
     const metadator = new Metadator("o5NDhQgVzoo");
     expect((await metadator.metaDatas()).ytMusic?.[0]).toMatchObject({
       title: "Make It Lower",
-      artist: "Carpetman",
+      artists: ["Carpetman"],
       album: "Make It Lower",
       releaseDate: "2024-12-19",
     });
@@ -15,7 +15,7 @@ describe("Metadata from YT URL", () => {
     const metadator = new Metadator("sduDiIGqvfQ");
     const metas = await metadator.metaDatas();
     expect(metas.spotify?.[0]).toMatchObject({
-      artist: "Carpetman",
+      artists: ["Carpetman"],
       title: "Make It Lower",
       album: "Make It Lower",
       releaseDate: "2024-12-19",
@@ -25,7 +25,7 @@ describe("Metadata from YT URL", () => {
     const metadator = new Metadator("eRgjK23taLw");
     expect((await metadator.metaDatas())?.spotify?.[0]).toMatchObject({
       title: "Crossfire",
-      artist: "Stephen",
+      artists: ["Stephen"],
       album: "Crossfire",
       releaseDate: "2015-12-07",
     });

@@ -1,7 +1,9 @@
 import ytdl from "@distube/ytdl-core";
-import { Metadata } from "./Metadata";
-import { YTMusicMetadata } from "./YTMusicMetadata";
-import { SpotifyMetadata } from "./SpotifyMetadata";
+import { MetadataBuilder } from "./MetadataBuilder";
+import { YTMusicMetadataBuilder } from "./YTMusicMetadataBuilder";
+import { SpotifyMetadataBuilder } from "./SpotifyMetadataBuilder";
+import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
+import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
 
 export interface MetadatorResponse {
   spotify: SpotifyMetadata[] | null;
@@ -30,9 +32,9 @@ export class Metadator {
    * It tries from multiple source - ytMusic, Spotify, ....
    */
   async metaDatas() {
-    const Metadatas: Record<keyof MetadatorResponse, typeof Metadata> = {
-      ytMusic: YTMusicMetadata,
-      spotify: SpotifyMetadata,
+    const Metadatas: Record<keyof MetadatorResponse, typeof MetadataBuilder> = {
+      ytMusic: YTMusicMetadataBuilder,
+      spotify: SpotifyMetadataBuilder,
     };
     const raw = await this.rawMetaData();
     const response: MetadatorResponse = {
@@ -44,9 +46,12 @@ export class Metadator {
       Object.keys(Metadatas).map(
         (key) =>
           new Promise(async (resolve, reject) => {
-            response[key as keyof MetadatorResponse] = await Metadatas[
+            const metadata = await Metadatas[
               key as keyof MetadatorResponse
             ].create(raw);
+
+            response[key as keyof MetadatorResponse] =
+              metadata as MetadatorResponse[keyof MetadatorResponse];
 
             resolve(response[key as keyof MetadatorResponse]);
           })
