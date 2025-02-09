@@ -1,8 +1,8 @@
 export interface Metadata {
   title: string;
   artists: string[];
-  album: string;
+  album: string | null;
   thumbnails: { url: string; width: number; height: number }[];
-  releaseDate: string; // ISO date
+  releaseDate: string | null; // ISO date
   duration: number; // in ms
 }
