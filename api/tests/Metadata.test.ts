@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { Metadator } from "../src/Metadata/Metadator";
 
 describe("Metadata from YT URL", () => {
-  it.only(
+  it(
     "YT Music, CarpetMan - Make it Lower",
     async () => {
       const metadator = new Metadator("o5NDhQgVzoo");
@@ -10,7 +10,7 @@ describe("Metadata from YT URL", () => {
         title: "Make It Lower",
         artists: ["Carpetman"],
         album: "Make It Lower",
-        releaseDate: "2024-12-19",
+        releaseDate: "2024",
       });
     },
     {

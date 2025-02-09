@@ -1,12 +1,53 @@
 import type { videoInfo } from "@distube/ytdl-core";
 import { MetadataBuilder } from "./MetadataBuilder";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
-import { YTMusic } from "../YTMusic/YTMusic";
+import YTMusic, { SearchResult } from "ytmusic-api";
+import fs from "fs";
+import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
 
 export class YTMusicMetadataBuilder extends MetadataBuilder {
-  static async create(raw: videoInfo): Promise<Metadata[] | null> {
-    const ytMusic = new YTMusic();
-    return null;
+  static async create(raw: videoInfo): Promise<YTMusicMetadata[] | null> {
+    const ytmusic = new YTMusic();
+    await ytmusic.initialize(/* Optional: Custom cookies */);
+
+    const songs = await ytmusic.search(raw.videoDetails.title);
+
+    const metas: YTMusicMetadata[] = [];
+    for (const _song of songs) {
+      const song = _song as unknown as {
+        type: "ALBUM" | "VIDEO";
+        albumId: string | undefined;
+        videoId: string;
+        name: string;
+        artist?: { name: string; artistId: string };
+        artists?: { name: string; artistId: string }[];
+        thumbnails: YTMusicMetadata["thumbnails"];
+        duration: number;
+      };
+      if (song.type != "ALBUM") continue;
+      const albumId = song.albumId;
+
+      let releaseDate = null;
+      let albumName = null;
+      if (albumId !== undefined) {
+        const album = await ytmusic.getAlbum(albumId);
+        releaseDate = album.year?.toString() ?? null;
+        albumName = album.name;
+      }
+      const meta: YTMusicMetadata = {
+        videoId: song.videoId,
+        title: song.name,
+        artists: song.artists?.map((artist) => artist.name) ?? [
+          song.artist!.name,
+        ],
+        album: albumName,
+        thumbnails: song.thumbnails,
+        releaseDate: releaseDate,
+        duration: song.duration * 1000,
+      };
+      metas.push(meta);
+    }
+    return metas;
   }
   // static create(raw: videoInfo): YTMusicMetadata[] | null {
   //   const videoDetails = raw.videoDetails;
