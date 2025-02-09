@@ -5,4 +5,5 @@ export interface Metadata {
   thumbnails: { url: string; width: number; height: number }[];
   releaseDate: string | null; // ISO date
   duration: number; // in ms
+  lyrics?: string;
 }
