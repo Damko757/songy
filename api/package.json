@@ -20,7 +20,10 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "ffmpeg-static": "^5.2.0",
     "helmet": "^8.0.0",
+    "ytdlp-helper": "^1.0.0",
+    "ytdlp-nodejs": "^0.1.5",
     "ytmusic-api": "^5.3.0"
   }
 }
