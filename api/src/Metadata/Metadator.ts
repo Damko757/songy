@@ -25,18 +25,32 @@ export class Metadator {
 
   protected createYTDLInstance(debug: boolean = false) {
     return new YtdlCore({
-      logDisplay: debug ? ["debug", "error", "info", "success", "warning"] : [],
-      clients: [
-        "web",
-        "mweb",
-        "webCreator",
-        "android",
-        "ios",
-        "tv",
-        "tvEmbedded",
-      ],
+      // clients: [
+      //   "web",
+      //   "mweb",
+      //   "webCreator",
+      //   "android",
+      //   "ios",
+      //   "tv",
+      //   "tvEmbedded",
+      // ],
       disablePoTokenAutoGeneration: true, // TODO?, create https://github.com/YunzheZJU/youtube-po-token-generator
       // YTBD has it disabled altogether, so why won't we?
+
+      // hl: "en",
+      // gl: "US",
+      disableDefaultClients: true,
+      disableInitialSetup: true,
+      parsesHLSFormat: false,
+      noUpdate: true,
+      logDisplay: debug
+        ? ["debug", "error", "info", "success", "warning"]
+        : ["warning", "error"],
+      clients: ["mweb", "web"],
+      filter: "videoandaudio",
+      html5Player: {
+        useRetrievedFunctionsFromGithub: true,
+      },
     });
   }
 
