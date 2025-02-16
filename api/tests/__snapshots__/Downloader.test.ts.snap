@@ -1,0 +1,17 @@
+// Bun Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`FFMPEG MP3 Audio only 1`] = `
+{
+  "sigBytes": 32,
+  "words": [
+    675151534,
+    812363979,
+    874854964,
+    -912879411,
+    -1607286948,
+    2067465579,
+    -376983114,
+    -723715869,
+  ],
+}
+`;
