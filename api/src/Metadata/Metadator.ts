@@ -3,8 +3,8 @@ import { YTMusicMetadataBuilder } from "./YTMusicMetadataBuilder";
 import { SpotifyMetadataBuilder } from "./SpotifyMetadataBuilder";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
-import YtdlCore from "@ybd-project/ytdl-core";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
+import YtdlCore from "@ybd-project/ytdl-core";
 
 export interface MetadatorResponse {
   spotify: SpotifyMetadata[] | null;
@@ -16,11 +16,14 @@ export interface MetadatorResponse {
  */
 export class Metadator {
   link: string;
+  private ytdl: YtdlCore;
+
   constructor(videoIdOrLink: string) {
     this.link = videoIdOrLink;
+    this.ytdl = this.createYTDLInstance(true);
   }
 
-  static createYTDLInstance(debug: boolean = false) {
+  protected createYTDLInstance(debug: boolean = false) {
     return new YtdlCore({
       logDisplay: debug ? ["debug", "error", "info", "success", "warning"] : [],
       clients: [
@@ -32,8 +35,17 @@ export class Metadator {
         "tv",
         "tvEmbedded",
       ],
-      disablePoTokenAutoGeneration: true,
+      disablePoTokenAutoGeneration: true, // TODO?, create https://github.com/YunzheZJU/youtube-po-token-generator
+      // YTBD has it disabled altogether, so why won't we?
     });
+  }
+
+  /**
+   *
+   * @returns ytdl instance created in constructor
+   */
+  getYtDlInstance() {
+    return this.ytdl;
   }
 
   /**
@@ -41,7 +53,7 @@ export class Metadator {
    * @returns The whole info object from ytdl
    */
   rawMetaData() {
-    return Metadator.createYTDLInstance().getFullInfo(this.link);
+    return this.ytdl.getFullInfo(this.link);
   }
 
   /**
