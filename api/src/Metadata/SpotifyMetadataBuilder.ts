@@ -1,13 +1,13 @@
-import type { videoInfo } from "@distube/ytdl-core";
 import { MetadataBuilder as MetadataBuilder } from "./MetadataBuilder";
 import axios, { AxiosError } from "axios";
 import { Spotify } from "../Spotify/Spotify";
 import { ENV } from "../env";
 import { MissingSpotifyCrendentials } from "../Spotify/SpotifyError";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
+import type { YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 
 export class SpotifyMetadataBuilder extends MetadataBuilder {
-  static async create(raw: videoInfo): Promise<SpotifyMetadata[] | null> {
+  static async create(raw: YTDL_VideoInfo): Promise<SpotifyMetadata[] | null> {
     if (!ENV.ENABLE_SPOTIFY) return null;
 
     try {

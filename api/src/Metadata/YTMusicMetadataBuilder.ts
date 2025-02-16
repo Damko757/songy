@@ -4,9 +4,10 @@ import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
 import YTMusic, { SearchResult } from "ytmusic-api";
 import fs from "fs";
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
+import type { YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 
 export class YTMusicMetadataBuilder extends MetadataBuilder {
-  static async create(raw: videoInfo): Promise<YTMusicMetadata[] | null> {
+  static async create(raw: YTDL_VideoInfo): Promise<YTMusicMetadata[] | null> {
     const ytmusic = new YTMusic();
     await ytmusic.initialize(/* Optional: Custom cookies */);
 
