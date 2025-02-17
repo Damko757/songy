@@ -5,6 +5,7 @@ import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyM
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
 import YtdlCore from "@ybd-project/ytdl-core";
+import type { FfmpegCommand } from "fluent-ffmpeg";
 
 export interface MetadatorResponse {
   spotify: SpotifyMetadata[] | null;
@@ -103,5 +104,30 @@ export class Metadator {
     );
 
     return response;
+  }
+
+  /**
+   * Inserts (Music) Metadata into ffmpeg output stream
+   * ### Thumbnail is not possible when working with streams!
+   * Currently supported: Album, Title, Artist(s)
+   * @param ffmpeg FFMPEG command to execute
+   * @param metadata Metadata object with values to write
+   * @returns The provided `ffmpeg`
+   */
+  static putMetadataToFFMPEG(
+    ffmpeg: FfmpegCommand,
+    metadata: Partial<Metadata>
+  ) {
+    const availableMetas = [
+      [metadata.album, "album"],
+      [metadata.artists?.join(", "), "artist"],
+      [metadata.title, "title"],
+    ];
+
+    availableMetas.forEach(([value, key], index) => {
+      if (value) ffmpeg.outputOptions("-metadata", `${key}=${value}`);
+    });
+
+    return ffmpeg;
   }
 }
