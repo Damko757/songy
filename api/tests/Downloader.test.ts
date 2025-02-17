@@ -8,8 +8,8 @@ describe("FFMPEG", () => {
   beforeEach(() => {
     fs.readdir("./out", (err, files) => {
       if (err) throw err;
-
       for (const file of files) {
+        if (file.endsWith(".jpg")) continue;
         fs.unlink(path.join("./out", file), (err) => {
           if (err) throw err;
         });
@@ -17,15 +17,40 @@ describe("FFMPEG", () => {
     });
   });
 
-  describe("MP3", () => {
+  describe.only("MP3", () => {
+    it("Audio only", async () => {
+      // expect.assertions(1);
+      const downloader = new Downloader(
+        "33fPaNWvyzE" //https://www.youtube.com/watch?v=
+      );
+      const audioStream = downloader.audioStream();
+      const buf: Uint8Array[] = [];
+      audioStream.on("data", (chunk) => {
+        buf.push(chunk);
+      });
+
+      await new Promise((resolve, reject) => {
+        audioStream.on("end", () => {
+          expect(sha256(Buffer.concat(buf).join(""))).toMatchSnapshot();
+          fs.writeFileSync("out/duck.mp3", Buffer.concat(buf));
+          resolve(true);
+        });
+
+        audioStream.on("error", (e) => {
+          reject(e);
+        });
+      });
+    });
     it.only(
-      "Audio only",
+      "Audio with Metadata",
       async () => {
-        // expect.assertions(1);
-        const downloader = new Downloader(
-          "33fPaNWvyzE" //https://www.youtube.com/watch?v=
-        );
-        const audioStream = downloader.audioStream();
+        const downloader = new Downloader("sduDiIGqvfQ");
+        const metas = await downloader.metadator.metaDatas();
+        const audioStream = downloader.audioStream({
+          metadata: metas.spotify?.[0] ?? {},
+          bitrate: 320,
+        });
+
         const buf: Uint8Array[] = [];
         audioStream.on("data", (chunk) => {
           buf.push(chunk);
@@ -34,7 +59,7 @@ describe("FFMPEG", () => {
         await new Promise((resolve, reject) => {
           audioStream.on("end", () => {
             expect(sha256(Buffer.concat(buf).join(""))).toMatchSnapshot();
-            fs.writeFileSync("out/duck.mp3", Buffer.concat(buf));
+            fs.writeFileSync("out/carpet.mp3", Buffer.concat(buf));
             resolve(true);
           });
 
@@ -43,7 +68,7 @@ describe("FFMPEG", () => {
           });
         });
       },
-      {}
+      { timeout: 10_000 }
     );
   });
 
