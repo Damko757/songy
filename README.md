@@ -76,3 +76,11 @@ Sends found metadata for provided video. Output format can be found [here](https
 # Contribution
 
 is welcomed :)
+
+## Development - API
+
+To work on BackEnd part of this project, you need to `cd ./api` folder and run `npm i`. Then you can start dev server by `npm run hot`.
+
+## Development - WEB
+
+To work on FrontEnd part of this project, you need to `cd ./web` folder and run `npm i`. Then you can start dev server by `npm run dev`.
