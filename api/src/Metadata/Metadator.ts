@@ -7,15 +7,7 @@ import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
 import YtdlCore, { type YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 import type { FfmpegCommand } from "fluent-ffmpeg";
 import { ENV } from "../env";
-
-export interface MetadatorResponse {
-  spotify: SpotifyMetadata[] | null;
-  ytMusic: YTMusicMetadata[] | null;
-}
-
-export interface MetadataResponse extends MetadatorResponse {
-  raw: YTDL_VideoInfo;
-}
+import type { MetadataResponse, MetadatorResponse } from "./MetadataResponse";
 
 /**
  * His role is to extract and find metadata

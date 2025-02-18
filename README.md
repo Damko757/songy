@@ -51,8 +51,21 @@ It can be easily (and anonymously) generated via a docker container: `docker run
 
 ## API
 
-> TODO
-> This is the backbone, that will download, find metadata, convert, etc...
+> WIP
+
+### /download/{extension}?link={yt-link}
+
+- {extension} - Filetype to download. Currenly only supported is `mp3` (audio only, 320 kbps) and `mp4` (video + audio, highest possible resulution + best possible audio).
+- {yt-link} - Youtube link to download (e.g. https://youtu.be/aqz-KE-bpKQ?si=Hd2fpeCaIKBnzn86).
+
+Downloads a stream, that can be directly saved as file.{extension}
+
+### /metadata?link={yt-link}
+
+- {yt-link} - Youtube link to download (e.g. https://youtu.be/aqz-KE-bpKQ?si=Hd2fpeCaIKBnzn86).
+
+Sends found metadata for provided video. Output format can be found [here](https://github.com/Damko757/songy/blob/main/api/src/Metadata/MetadataResponse.ts)
+
 > <a id="web"></a>
 
 ## Web
