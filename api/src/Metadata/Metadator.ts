@@ -4,12 +4,16 @@ import { SpotifyMetadataBuilder } from "./SpotifyMetadataBuilder";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
-import YtdlCore from "@ybd-project/ytdl-core";
+import YtdlCore, { type YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 import type { FfmpegCommand } from "fluent-ffmpeg";
 
 export interface MetadatorResponse {
   spotify: SpotifyMetadata[] | null;
   ytMusic: YTMusicMetadata[] | null;
+}
+
+export interface MetadataResponse extends MetadatorResponse {
+  raw: YTDL_VideoInfo;
 }
 
 /**
@@ -80,9 +84,10 @@ export class Metadator {
       spotify: SpotifyMetadataBuilder,
     };
     const raw = await this.rawMetaData();
-    const response: MetadatorResponse = {
+    const response: MetadataResponse = {
       spotify: null,
       ytMusic: null,
+      raw: raw,
     };
 
     const promises: Promise<Metadata>[] = [];
@@ -107,6 +112,7 @@ export class Metadator {
   }
 
   /**
+   * @deprecated FFMPEG stream does not support every type
    * Inserts (Music) Metadata into ffmpeg output stream
    * ### Thumbnail is not possible when working with streams!
    * Currently supported: Album, Title, Artist(s)
