@@ -15,7 +15,6 @@ export class Downloader {
 
   audioStream(
     options: YTDL_DownloadOptions & {
-      metadata?: Partial<Metadata>;
       bitrate?: number;
     } = {}
   ) {
@@ -30,36 +29,33 @@ export class Downloader {
           .downloadFromInfo(info, { quality: "highestaudio", ...options })
           .then((stream) => {
             const reader = stream.getReader();
+            ffmpeg()
+              .input(
+                new Readable({
+                  async read() {
+                    // Function to read the chunks asynchronously
+                    const pushChunk = async () => {
+                      try {
+                        const { done, value } = await reader.read();
 
-            Metadator.putMetadataToFFMPEG(
-              ffmpeg()
-                .input(
-                  new Readable({
-                    async read() {
-                      // Function to read the chunks asynchronously
-                      const pushChunk = async () => {
-                        try {
-                          const { done, value } = await reader.read();
-
-                          if (done) {
-                            this.push(null); // No more data, signal end of stream
-                          } else {
-                            this.push(value); // Push the chunk of data to the Node.js stream
-                            pushChunk(); // Continue reading
-                          }
-                        } catch (err) {
-                          this.emit("error", err); // Handle any errors
+                        if (done) {
+                          this.push(null); // No more data, signal end of stream
+                        } else {
+                          this.push(value); // Push the chunk of data to the Node.js stream
+                          pushChunk(); // Continue reading
                         }
-                      };
+                      } catch (err) {
+                        this.emit("error", err); // Handle any errors
+                      }
+                    };
 
-                      pushChunk(); // Start reading the chunks
-                    },
-                  })
-                )
-                .audioBitrate(options.bitrate ?? 320)
-                .format("mp3"),
-              options.metadata ?? {}
-            ).pipe(outStream);
+                    pushChunk(); // Start reading the chunks
+                  },
+                })
+              )
+              .audioBitrate(options.bitrate ?? 320)
+              .format("mp3")
+              .pipe(outStream);
           })
           .catch((e) => {
             console.error(e);
