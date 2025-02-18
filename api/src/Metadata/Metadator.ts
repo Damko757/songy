@@ -29,6 +29,14 @@ export class Metadator {
     this.ytdl = this.createYTDLInstance();
   }
 
+  /**
+   * Validates Youtube URL
+   * @returns bool
+   */
+  isValid() {
+    return YtdlCore.validateURL(this.link);
+  }
+
   protected createYTDLInstance(debug: boolean = false) {
     return new YtdlCore({
       clients: [

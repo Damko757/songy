@@ -32,7 +32,7 @@ export class Downloader {
    * @returns bool
    */
   isValid() {
-    return YtdlCore.validateURL(this.link);
+    return this.metadator.isValid();
   }
 
   /**
