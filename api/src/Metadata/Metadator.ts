@@ -6,6 +6,7 @@ import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicM
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
 import YtdlCore, { type YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 import type { FfmpegCommand } from "fluent-ffmpeg";
+import { ENV } from "../env";
 
 export interface MetadatorResponse {
   spotify: SpotifyMetadata[] | null;
@@ -51,10 +52,11 @@ export class Metadator {
       logDisplay: debug
         ? ["debug", "error", "info", "success", "warning"]
         : ["warning", "error"],
-      filter: "videoandaudio",
       html5Player: {
         useRetrievedFunctionsFromGithub: true,
       },
+      poToken: ENV.POTOKEN,
+      visitorData: ENV.VISITOR_DATA,
     });
   }
 

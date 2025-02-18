@@ -31,6 +31,15 @@ For sample .env file, check `.sample.env`
 | SPOTIFY_CLIENT_ID     | Your ClientId (https://developer.spotify.com/documentation/web-api)         |
 | SPOTIFY_CLIENT_SECRET | Your ClientSecret                                                           |
 
+To make Downloading from youtube much easier/faster (and sometimes even for it to work), you need to specify the `POTOKEN` and `VISTOR_DATA`.
+You can read more about it here: https://www.npmjs.com/package/@ybd-project/ytdl-core/v/5.1.7#potoken-support
+It can be easily (and anonymously) generated via a docker container: `docker run quay.io/invidious/youtube-trusted-session-generator` (https://github.com/iv-org/youtube-trusted-session-generator)
+
+| Youtube      |                                                       |
+| ------------ | ----------------------------------------------------- |
+| POTOKEN      | Part of special token to bypass bot protection        |
+| VISITOR_DATA | Second part of special token to bypass bot protection |
+
 <a id="meta_sources"></a>
 
 ## Available metadata source
