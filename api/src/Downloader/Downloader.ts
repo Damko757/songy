@@ -1,10 +1,11 @@
 import ffmpeg from "fluent-ffmpeg";
 import { PassThrough, Readable, Writable } from "stream";
 import { Metadator } from "../Metadata/Metadator.js";
-import type {
-  YTDL_ChooseFormatOptions,
-  YTDL_DownloadOptions,
-  YTDL_VideoFormat,
+import {
+  YtdlCore,
+  type YTDL_ChooseFormatOptions,
+  type YTDL_DownloadOptions,
+  type YTDL_VideoFormat,
 } from "@ybd-project/ytdl-core";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata.js";
 import { readableStreamToReadable } from "../Utils/ReadableStreamUtils.js";
@@ -16,11 +17,29 @@ export class Downloader {
   link: string;
   metadator: Metadator;
 
+  static supportedExtensions: Record<"audio" | "video", string[]> = {
+    audio: ["mp3"],
+    video: ["mp4"],
+  };
+
   constructor(link: string) {
     this.link = link;
     this.metadator = new Metadator(this.link);
   }
 
+  /**
+   * Validates Youtube URL
+   * @returns bool
+   */
+  isValid() {
+    return YtdlCore.validateURL(this.link);
+  }
+
+  /**
+   * Streams audio only from youtube
+   * @param options
+   * @returns PassThrough stream with audio stream
+   */
   audioStream(
     options: YTDL_DownloadOptions & {
       bitrate?: number;
@@ -59,6 +78,11 @@ export class Downloader {
     return outStream;
   }
 
+  /**
+   * Streams video + audio from youtube
+   * @param options
+   * @returns PassThrough stream with video stream
+   */
   videoStream(
     options: YTDL_DownloadOptions & {
       bitrate?: number;
