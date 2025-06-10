@@ -1,5 +1,4 @@
 # Bun cache
-**/bun.lock*
+**/bun.lockb
 package-lock.json
 .env
-_*
