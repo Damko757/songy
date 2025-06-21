@@ -23,10 +23,7 @@
     // Some stricter flags (disabled by default)
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false,
-
-    // Types
-    "types": ["jest", "node"]
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": ["../shared/**/*.ts", "./**/*.ts"]
 }

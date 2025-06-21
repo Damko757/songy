@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "bun:test";
 import { Metadator } from "../src/Metadata/Metadator";
 
 describe("Metadata from YT URL", () => {
