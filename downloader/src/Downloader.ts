@@ -60,11 +60,53 @@ export class Downloader {
   }
 
   /**
+   * Connects `source` and `target` streams with events
+   * @param sourceStream Stream to listen to events from
+   * @param targetStream Stream to emit the events on
+   */
+  protected pipeStreams(sourceStream: Readable, targetStream: Writable) {
+    targetStream.on("error", (...args) => sourceStream.emit("close", ...args));
+    targetStream.on("close", (...args) => sourceStream.emit("close", ...args));
+    targetStream.on("finish", (...args) =>
+      sourceStream.emit("finish", ...args)
+    );
+    targetStream.on("end", (...args) => sourceStream.emit("end", ...args));
+    targetStream.on("progress", (...args) =>
+      sourceStream.emit("progress", ...args)
+    );
+    targetStream.on("info", (...args) => sourceStream.emit("info", ...args));
+    sourceStream.pipe(targetStream);
+  }
+
+  /**
+   * Download video Only
+   * @param options
+   */
+  videoStream(options: downloadOptions = {}) {
+    const outStream = new PassThrough();
+
+    ytdl
+      .getInfo(this.link)
+      .then((info) => {
+        const videoStream = ytdl.downloadFromInfo(info, {
+          filter: "video",
+          ...options,
+        });
+        this.pipeStreams(videoStream, outStream);
+      })
+      .catch((e) => {
+        outStream.emit("error", e);
+      });
+
+    return outStream;
+  }
+
+  /**
    * Streams video + audio from youtube
    * @param options
    * @returns PassThrough stream with video stream
    */
-  videoStream(
+  combinedStream(
     options: downloadOptions & {
       bitrate?: number;
       videoQuality?: ytdl.chooseFormatOptions["quality"];
@@ -77,22 +119,62 @@ export class Downloader {
     ytdl
       .getInfo(this.link)
       .then((info) => {
-        // ytdl.downloadFromInfo(info, {
-        //   quality: options.audioQuality ?? "highestaudio",
-        //   filter: "audio",
-        //   ...options,
-        // });
-        const stream = ytdl.downloadFromInfo(info, {
-          quality: "highestvideo",
+        const audioStream = ytdl.downloadFromInfo(info, {
+          quality: options.audioQuality ?? "highestaudio",
+          filter: "audio",
+          ...options,
+        });
+        const videoStream = ytdl.downloadFromInfo(info, {
+          quality: options.audioQuality ?? "highestvideo",
           // filter: "video",
           ...options,
         });
-        stream.on("close", (...args) => outStream.emit("close", ...args));
-        stream.on("finish", (...args) => outStream.emit("finish", ...args));
-        stream.on("end", (...args) => outStream.emit("end", ...args));
-        stream.on("progress", (...args) => outStream.emit("progress", ...args));
-        stream.on("info", (...args) => outStream.emit("info", ...args));
-        stream.pipe(outStream);
+        const ffmpegProcess = cp.spawn(
+          ffmpegPath!,
+          [
+            // supress non-crucial messages
+            "-loglevel",
+            "8",
+            "-hide_banner",
+            "-fflags",
+            "+igndts",
+            // input audio and video by pipe
+            "-i",
+            "pipe:3",
+            "-i",
+            "pipe:4",
+            // map audio and video correspondingly
+            "-map",
+            "0:a",
+            "-map",
+            "1:v",
+            // no need to change the codec
+            "-c",
+            "copy",
+            // output mp4 and pipe
+            "-f",
+            "matroska",
+            "pipe:5",
+          ],
+          {
+            // no popup window for Windows users
+            windowsHide: true,
+            stdio: [
+              // silence stdin/out, forward stderr,
+              "inherit",
+              "inherit",
+              "inherit",
+              // and pipe audio, video, output
+              "pipe",
+              "pipe",
+              "pipe",
+            ],
+          }
+        );
+
+        audioStream.pipe(ffmpegProcess.stdio[3] as Writable);
+        videoStream.pipe(ffmpegProcess.stdio[4] as Writable);
+        (ffmpegProcess.stdio as Readable[])[5].pipe(outStream);
 
         // Promise.all([audioStreamPromise, videoStreamPromise])
         //   .then(([audioStream, videoStream]) => {
@@ -103,47 +185,7 @@ export class Downloader {
         //     // videoReadable.pipe(fs.createWriteStream("out/vid.mp4"));
         //     // videoReadable.on("end", () => outStream.end());
 
-        //     const ffmpegProcess = cp.spawn(
-        //       ffmpegPath!,
-        //       [
-        //         // supress non-crucial messages
-        //         "-loglevel",
-        //         "8",
-        //         "-hide_banner",
-        //         "-fflags",
-        //         "+igndts",
-        //         // input audio and video by pipe
-        //         "-i",
-        //         "pipe:3",
-        //         "-i",
-        //         "pipe:4",
-        //         // map audio and video correspondingly
-        //         "-map",
-        //         "0:a",
-        //         "-map",
-        //         "1:v",
-        //         // no need to change the codec
-        //         "-c",
-        //         "copy",
-        //         // output mp4 and pipe
-        //         "-f",
-        //         "matroska",
-        //         "pipe:5",
-        //       ],
-        //       {
-        //         // no popup window for Windows users
-        //         windowsHide: true,
-        //         stdio: [
-        //           // silence stdin/out, forward stderr,
-        //           "inherit",
-        //           "inherit",
-        //           "inherit",
-        //           // and pipe audio, video, output
-        //           "pipe",
-        //           "pipe",
-        //           "pipe",
-        //         ],
-        //       }
+        //
         //     );
         //     audioReadable.pipe(ffmpegProcess.stdio[3] as Writable);
         //     videoReadable.pipe(ffmpegProcess.stdio[4] as Writable);
