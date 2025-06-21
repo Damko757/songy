@@ -8,10 +8,10 @@ import ytdl from "@distube/ytdl-core";
 const DEBUG_SAVE = true;
 beforeAll(() => {
   const files = fs.readdirSync("./out");
-  // for (const file of files) {
-  //   if (file.endsWith(".jpg")) continue;
-  //   fs.unlinkSync(path.join("./out", file));
-  // }
+  for (const file of files) {
+    if (file.endsWith(".jpg")) continue;
+    fs.unlinkSync(path.join("./out", file));
+  }
 });
 
 describe("Audio only", () => {
@@ -90,7 +90,7 @@ describe("Video only", () => {
         ? fs.createWriteStream(`out/${res}p.mp4`)
         : undefined;
       videoStream.on("data", (chunk) => {
-        buf.push(chunk); // Saving chunk to buffer
+        if (res <= 720) buf.push(chunk); // Saving chunk to buffer if <= 720p, due to max JS heap memory
         file?.write(chunk); // Writing chunk (if needed)
       });
 
@@ -105,7 +105,7 @@ describe("Video only", () => {
         });
 
         videoStream.on("error", (e) => {
-          reject(e);
+          reject(e); // Not passing, fail
         });
       });
     }, 10_000); // 10s
