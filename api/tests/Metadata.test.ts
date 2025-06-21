@@ -1,22 +1,16 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect } from "@jest/globals";
 import { Metadator } from "../src/Metadata/Metadator";
 
 describe("Metadata from YT URL", () => {
-  it(
-    "YT Music, CarpetMan - Make it Lower",
-    async () => {
-      const metadator = new Metadator("o5NDhQgVzoo");
-      expect((await metadator.metaDatas()).ytMusic?.[0]).toMatchObject({
-        title: "Make It Lower",
-        artists: ["Carpetman"],
-        album: "Make It Lower",
-        releaseDate: "2024",
-      });
-    },
-    {
-      timeout: 10000,
-    }
-  );
+  it("YT Music, CarpetMan - Make it Lower", async () => {
+    const metadator = new Metadator("o5NDhQgVzoo");
+    expect((await metadator.metaDatas()).ytMusic?.[0]).toMatchObject({
+      title: "Make It Lower",
+      artists: ["Carpetman"],
+      album: "Make It Lower",
+      releaseDate: "2024",
+    });
+  }, 10_000);
   it("Spotify, CarpetMan - Make it Lower", async () => {
     const metadator = new Metadator("sduDiIGqvfQ");
     const metas = await metadator.metaDatas();

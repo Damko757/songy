@@ -1,8 +1,8 @@
-import { expect, describe, it, beforeEach, beforeAll } from "bun:test";
 import { Downloader } from "../src/Downloader/Downloader";
 import fs from "fs";
 import path, { resolve } from "path";
-import sha256 from "crypto-js/sha256";
+import { beforeAll, describe, expect, it } from "@jest/globals";
+import { sha256 } from "sha.js";
 
 const DEBUG_SAVE = false;
 describe("FFMPEG", () => {
@@ -19,7 +19,7 @@ describe("FFMPEG", () => {
   });
 
   describe("MP3", () => {
-    it("Audio only", async () => {
+    it.only("Audio only", async () => {
       // expect.assertions(1);
       const downloader = new Downloader(
         "33fPaNWvyzE" //https://www.youtube.com/watch?v=
@@ -33,7 +33,9 @@ describe("FFMPEG", () => {
       await new Promise((resolve, reject) => {
         audioStream.on("end", () => {
           if (DEBUG_SAVE) fs.writeFileSync("out/duck.mp3", Buffer.concat(buf));
-          expect(sha256(Buffer.concat(buf).join(""))).toMatchSnapshot();
+          expect(
+            new sha256().update(Buffer.concat(buf).join(""))
+          ).toMatchSnapshot();
           resolve(true);
         });
 
@@ -42,66 +44,59 @@ describe("FFMPEG", () => {
         });
       });
     });
-    it(
-      "Another audio",
-      async () => {
-        /**
-         * Downloader does not automatically provide metadatas
-         */
-        const downloader = new Downloader("sduDiIGqvfQ");
-        const audioStream = downloader.audioStream({
-          bitrate: 320,
+    it("Another audio", async () => {
+      /**
+       * Downloader does not automatically provide metadatas
+       */
+      const downloader = new Downloader("sduDiIGqvfQ");
+      const audioStream = downloader.audioStream({
+        bitrate: 320,
+      });
+
+      const buf: Uint8Array[] = [];
+      audioStream.on("data", (chunk) => {
+        buf.push(chunk);
+      });
+
+      await new Promise((resolve, reject) => {
+        audioStream.on("end", () => {
+          if (DEBUG_SAVE)
+            fs.writeFileSync("out/carpet.mp3", Buffer.concat(buf));
+          expect(
+            new sha256().update(Buffer.concat(buf).join(""))
+          ).toMatchSnapshot();
+          resolve(true);
         });
 
-        const buf: Uint8Array[] = [];
-        audioStream.on("data", (chunk) => {
-          buf.push(chunk);
+        audioStream.on("error", (e) => {
+          reject(e);
         });
-
-        await new Promise((resolve, reject) => {
-          audioStream.on("end", () => {
-            if (DEBUG_SAVE)
-              fs.writeFileSync("out/carpet.mp3", Buffer.concat(buf));
-            expect(sha256(Buffer.concat(buf).join(""))).toMatchSnapshot();
-            resolve(true);
-          });
-
-          audioStream.on("error", (e) => {
-            reject(e);
-          });
-        });
-      },
-      { timeout: 10_000 }
-    );
+      });
+    }, 10_000);
   });
 
   describe("MP4", () => {
-    it(
-      "Video/Audio sync",
-      async () => {
-        const downloader = new Downloader("ucZl6vQ_8Uo");
-        const audioStream = downloader.videoStream();
-        const buf: Uint8Array[] = [];
-        audioStream.on("data", (chunk) => {
-          buf.push(chunk);
+    it("Video/Audio sync", async () => {
+      const downloader = new Downloader("ucZl6vQ_8Uo");
+      const audioStream = downloader.videoStream();
+      const buf: Uint8Array[] = [];
+      audioStream.on("data", (chunk) => {
+        buf.push(chunk);
+      });
+
+      await new Promise((resolve, reject) => {
+        audioStream.on("end", () => {
+          if (DEBUG_SAVE) fs.writeFileSync("out/video.mp4", Buffer.concat(buf));
+          expect(
+            new sha256().update(Buffer.concat(buf).join(""))
+          ).toMatchSnapshot();
+          resolve(true);
         });
 
-        await new Promise((resolve, reject) => {
-          audioStream.on("end", () => {
-            if (DEBUG_SAVE)
-              fs.writeFileSync("out/video.mp4", Buffer.concat(buf));
-            expect(sha256(Buffer.concat(buf).join(""))).toMatchSnapshot();
-            resolve(true);
-          });
-
-          audioStream.on("error", (e) => {
-            reject(e);
-          });
+        audioStream.on("error", (e) => {
+          reject(e);
         });
-      },
-      {
-        timeout: 10_000,
-      }
-    );
+      });
+    }, 10_0000);
   });
 });
