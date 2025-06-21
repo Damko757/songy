@@ -4,21 +4,19 @@ import { SpotifyMetadataBuilder } from "./SpotifyMetadataBuilder";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
 import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
-import YtdlCore, { type YTDL_VideoInfo } from "@ybd-project/ytdl-core";
 import type { FfmpegCommand } from "fluent-ffmpeg";
 import { ENV } from "../env";
 import type { MetadataResponse, MetadatorResponse } from "./MetadataResponse";
+import ytdl from "@distube/ytdl-core";
 
 /**
  * His role is to extract and find metadata
  */
 export class Metadator {
   link: string;
-  private ytdl: YtdlCore;
 
   constructor(videoIdOrLink: string) {
     this.link = videoIdOrLink;
-    this.ytdl = this.createYTDLInstance();
   }
 
   /**
@@ -26,46 +24,7 @@ export class Metadator {
    * @returns bool
    */
   isValid() {
-    return YtdlCore.validateURL(this.link);
-  }
-
-  protected createYTDLInstance(debug: boolean = false) {
-    return new YtdlCore({
-      clients: [
-        "web",
-        "mweb",
-        "webCreator",
-        "android",
-        "ios",
-        "tv",
-        "tvEmbedded",
-      ],
-      disablePoTokenAutoGeneration: true, // TODO?, create https://github.com/YunzheZJU/youtube-po-token-generator
-      // YTBD has it disabled altogether, so why won't we?
-
-      // hl: "en",
-      // gl: "US",
-      disableDefaultClients: true,
-      disableInitialSetup: true,
-      parsesHLSFormat: false,
-      noUpdate: true,
-      logDisplay: debug
-        ? ["debug", "error", "info", "success", "warning"]
-        : ["warning", "error"],
-      html5Player: {
-        useRetrievedFunctionsFromGithub: true,
-      },
-      poToken: ENV.POTOKEN,
-      visitorData: ENV.VISITOR_DATA,
-    });
-  }
-
-  /**
-   *
-   * @returns ytdl instance created in constructor
-   */
-  getYtDlInstance() {
-    return this.ytdl;
+    return ytdl.validateURL(this.link);
   }
 
   /**
@@ -73,7 +32,7 @@ export class Metadator {
    * @returns The whole info object from ytdl
    */
   rawMetaData() {
-    return this.ytdl.getFullInfo(this.link);
+    return ytdl.getInfo(this.link);
   }
 
   /**
