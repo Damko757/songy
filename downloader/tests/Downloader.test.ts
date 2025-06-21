@@ -1,25 +1,25 @@
-import { Downloader } from "../src/Downloader/Downloader";
+import { Downloader } from "../src/Downloader.ts";
 import fs from "fs";
 import path, { resolve } from "path";
 import { beforeAll, describe, expect, it } from "@jest/globals";
 import { sha256 } from "sha.js";
 
-const DEBUG_SAVE = false;
+const DEBUG_SAVE = true;
 describe("FFMPEG", () => {
   beforeAll(() => {
     fs.readdir("./out", (err, files) => {
       if (err) throw err;
-      for (const file of files) {
-        if (file.endsWith(".jpg")) continue;
-        fs.unlink(path.join("./out", file), (err) => {
-          if (err) throw err;
-        });
-      }
+      // for (const file of files) {
+      //   if (file.endsWith(".jpg")) continue;
+      //   fs.unlink(path.join("./out", file), (err) => {
+      //     if (err) throw err;
+      //   });
+      // }
     });
   });
 
   describe("MP3", () => {
-    it.only("Audio only", async () => {
+    it("Audio only", async () => {
       // expect.assertions(1);
       const downloader = new Downloader(
         "33fPaNWvyzE" //https://www.youtube.com/watch?v=
@@ -75,9 +75,43 @@ describe("FFMPEG", () => {
     }, 10_000);
   });
 
+  describe.only("Video only", () => {
+    it("Simple video", async () => {
+      const downloader = new Downloader(
+        "https://www.youtube.com/watch?v=FTQbiNvZqaY"
+      );
+      const videoStream = downloader.videoStream();
+      console.log(videoStream);
+      const buf: Uint8Array[] = [];
+      const file = fs.createWriteStream("out/simple.mp4");
+      videoStream.on("data", (chunk) => {
+        buf.push(chunk);
+        if (DEBUG_SAVE) file.write(chunk);
+      });
+
+      return new Promise<void>((resolve, reject) => {
+        videoStream.on("end", () => {
+          console.log("END!");
+          file.end();
+
+          // expect(
+          //   new sha256().update(Buffer.concat(buf).join(""))
+          // ).toMatchSnapshot();
+          resolve();
+        });
+
+        videoStream.on("error", (e) => {
+          reject(e);
+        });
+      });
+    }, 1_000_000);
+  });
+
   describe("MP4", () => {
     it("Video/Audio sync", async () => {
-      const downloader = new Downloader("ucZl6vQ_8Uo");
+      const downloader = new Downloader(
+        "https://youtu.be/LXb3EKWsInQ?si=kE2iqF0famt_njjk"
+      );
       const audioStream = downloader.videoStream();
       const buf: Uint8Array[] = [];
       audioStream.on("data", (chunk) => {
