@@ -2,3 +2,4 @@
 **/bun.lock*
 package-lock.json
 .env
+_*
