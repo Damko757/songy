@@ -1,7 +1,7 @@
 import ffmpeg from "fluent-ffmpeg";
 import { PassThrough, Readable, Writable } from "stream";
 import fs from "fs";
-import cp from "child_process";
+import cp, { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
 import ytdl, { type downloadOptions } from "@distube/ytdl-core";
 
@@ -28,48 +28,65 @@ export class Downloader {
   }
 
   /**
-   * Streams audio only from youtube
+   * Streams audio only
+   * Original stream is converted via FFMPEG. Progress and info event are added as an extra
    * @param options
-   * @returns PassThrough stream with audio stream
+   * @returns PassThrough audio stream
    */
   audioStream(options: ytdl.downloadOptions & { bitrate?: number } = {}) {
-    const self = this;
-    const outStream = new PassThrough();
-    return outStream;
+    return new Promise<Readable>(async (resolve, reject) => {
+      ytdl
+        .getInfo(this.link)
+        .then((info) => {
+          const format =
+            options.format ??
+            ytdl.chooseFormat(info.formats, {
+              quality: options.quality ?? "highestaudio",
+              ...options,
+            }); // Fetching format for FFMPEG
 
-    // this.metadator
-    //   .rawMetaData()
-    //   .then((info) => {
-    //     const readable = ytdl.downloadFromInfo(info, {
-    //       quality: options.quality ?? "highestaudio",
-    //       filter: "audio",
-    //       ...options,
-    //     });
+          const videoStream = ytdl.downloadFromInfo(info, {
+            quality: options.quality ?? "highestaudio",
+            filter: "audio",
+            ...options,
+          });
 
-    //     ffmpeg()
-    //       .input(readable)
-    //       .audioBitrate(options.bitrate ?? 320)
-    //       .format("mp3")
-    //       .pipe(outStream);
-    //   })
-    //   .catch((e) => {
-    //     outStream.emit("error", e);
-    //   });
+          const audioStream = new PassThrough();
 
-    // return outStream;
-  }
+          // Emitting Ytdl-core events
+          videoStream.on("progress", (...args) =>
+            audioStream.emit("progress", ...args)
+          );
+          videoStream.on("info", (...args) => {
+            audioStream.emit("info", ...args);
+          });
 
-  /**
-   * Connects `source` and `target` streams with ytdl-core-specific events
-   * @param sourceStream Stream to listen to events from
-   * @param targetStream Stream to emit the events on
-   */
-  protected pipeStreams(sourceStream: Readable, targetStream: Writable) {
-    targetStream.on("progress", (...args) =>
-      sourceStream.emit("progress", ...args)
-    );
-    targetStream.on("info", console.info);
-    sourceStream.pipe(targetStream);
+          const ffmpeg = spawn("ffmpeg", [
+            "-i",
+            "pipe:0", // Input from stdin
+            "-vn", // No video
+            ...(format.audioBitrate
+              ? ["-b:a", format.audioBitrate.toString() + "k"]
+              : []), // Audio bitrate from format
+            "-acodec",
+            "libmp3lame", // Audio codec
+            "-f",
+            "mp3", // Output format
+            "pipe:1", // Output to stdout
+          ]);
+
+          // Pipe video input into FFmpeg
+          videoStream.pipe(ffmpeg.stdin);
+
+          // Pipe FFmpeg output to audioOutput stream
+          ffmpeg.stdout.pipe(audioStream);
+
+          ffmpeg.on("data", console.error);
+
+          resolve(audioStream);
+        })
+        .catch(reject);
+    });
   }
 
   /**
@@ -77,9 +94,7 @@ export class Downloader {
    * @param options
    */
   videoStream(options: downloadOptions = {}) {
-    const outStream = new PassThrough();
-
-    return new Promise<Readable>((resolve) => {
+    return new Promise<Readable>((resolve, reject) => {
       ytdl
         .getInfo(this.link)
         .then((info) => {
@@ -87,14 +102,10 @@ export class Downloader {
             filter: "video",
             ...options,
           });
-          this.pipeStreams(videoStream, outStream);
+          return resolve(videoStream);
         })
-        .catch((e) => {
-          outStream.emit("error", e);
-        });
+        .catch(reject);
     });
-
-    return outStream;
   }
 
   /**
@@ -109,7 +120,6 @@ export class Downloader {
       audioQuality?: ytdl.chooseFormatOptions["quality"];
     } = {}
   ) {
-    const self = this;
     const outStream = new PassThrough();
 
     ytdl
