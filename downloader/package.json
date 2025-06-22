@@ -8,17 +8,19 @@
     "start": "NODE_PATH=./build node build/index.js",
     "build": "tsc -p .",
     "dev": "nodemon src/index.ts",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose --coverage --config jest.config.json"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose --coverage --config jest.config.json --only=true"
   },
   "author": "Damián Jambor",
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "@types/fluent-ffmpeg": "^2.1.27",
     "@types/sha.js": "^2.4.4",
+    "@types/tmp": "^0.2.6",
     "ffmpeg-static": "^5.2.0",
     "fluent-ffmpeg": "^2.1.3",
     "jest": "^30.0.2",
     "sha.js": "^2.4.11",
+    "tmp": "^0.2.3",
     "ts-jest": "^29.4.0"
   }
 }

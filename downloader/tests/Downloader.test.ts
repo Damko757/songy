@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from "@jest/globals";
 import { sha256 } from "sha.js";
 import ytdl from "@distube/ytdl-core";
 import readline from "readline";
+import tmp from "tmp";
 
 const DEBUG_SAVE = true;
 beforeAll(() => {
@@ -55,15 +56,15 @@ describe("Audio only", () => {
   }
 });
 
+const blenderFilm = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"; // Blender official film
 describe("Video only", () => {
-  const url = "https://www.youtube.com/watch?v=aqz-KE-bpKQ"; // Blender official film
   for (const res of [144, 240, 360, 480, 720, 1080, 1440, 2160]) {
     // Testing all video files
     it(
       `${res}p`,
       async () => {
-        const downloader = new Downloader(url);
-        const format = (await ytdl.getInfo(url)).formats.find(
+        const downloader = new Downloader(blenderFilm);
+        const format = (await ytdl.getInfo(blenderFilm)).formats.find(
           (f) => f.height === res && f.hasVideo && !f.hasAudio
         ); // Filtering resolution
         expect(format).toBeDefined();
@@ -102,26 +103,120 @@ describe("Video only", () => {
 });
 
 describe("Combined", () => {
-  // it("Video/Audio sync", async () => {
-  //   const downloader = new Downloader(
-  //     "https://youtu.be/LXb3EKWsInQ?si=kE2iqF0famt_njjk"
-  //   );
-  //   const audioStream = downloader.videoStream();
-  //   const buf: Uint8Array[] = [];
-  //   audioStream.on("data", (chunk) => {
-  //     buf.push(chunk);
-  //   });
-  //   await new Promise((resolve, reject) => {
-  //     audioStream.on("end", () => {
-  //       if (DEBUG_SAVE) fs.writeFileSync("out/video.mp4", Buffer.concat(buf));
-  //       expect(
-  //         new sha256().update(Buffer.concat(buf).join(""))
-  //       ).toMatchSnapshot();
-  //       resolve(true);
-  //     });
-  //     audioStream.on("error", (e) => {
-  //       reject(e);
-  //     });
-  //   });
-  // }, 10_0000);
+  it("Video/Audio sync", async () => {
+    expect.assertions(7);
+    const videoHash = new sha256();
+    const audioHash = new sha256();
+    const combinedHash = new sha256();
+
+    const downloader = new Downloader(
+      "https://www.youtube.com/watch?v=ucZl6vQ_8Uo"
+    );
+
+    const videoFileName = DEBUG_SAVE
+      ? "./out/video-audio-sync-VIDEO.mp4"
+      : tmp.fileSync().name;
+    const videoFileStream = fs.createWriteStream(videoFileName);
+    const audioFileName = DEBUG_SAVE
+      ? "./out/video-audio-sync-AUDIO.mp4"
+      : tmp.fileSync().name;
+    const audioFileStream = fs.createWriteStream(audioFileName);
+
+    // Video stream test
+    const videoStream = await downloader.videoStream({
+      quality: "highestvideo",
+    });
+    videoStream
+      .on("info", (_, format: ytdl.videoFormat) => {
+        console.log("video Info");
+        expect(format.hasVideo).toBeTruthy();
+        expect(format.hasAudio).toBeFalsy();
+        expect(format.height).toBe(1080);
+      })
+      .on("data", (chunk) => {
+        videoFileStream.write(chunk);
+        videoHash.update(chunk);
+      });
+    await new Promise<void>((resolve) =>
+      videoStream.on("end", () => {
+        console.log("video end");
+
+        expect(videoHash).toMatchSnapshot();
+        resolve();
+      })
+    );
+
+    // Audio stream test
+    const audioStream = await downloader.audioStream();
+    audioStream
+      .on("info", (_, format: ytdl.videoFormat) => {
+        console.log("audio Info");
+
+        expect(format.hasAudio).toBeTruthy();
+        expect(format.hasVideo).toBeFalsy();
+      })
+      .on("data", (chunk) => {
+        audioFileStream.write(chunk);
+        audioHash.update(chunk);
+      });
+    await new Promise<void>((resolve) =>
+      audioStream.on("end", () => {
+        console.log("audio end");
+
+        expect(audioHash).toMatchSnapshot();
+        resolve();
+      })
+    );
+
+    const outFileName = DEBUG_SAVE
+      ? "./out/video-audio-sync.mp4"
+      : tmp.fileSync().name;
+
+    // Combination
+    await downloader.createCombinedVideoAudio(
+      videoFileName,
+      audioFileName,
+      outFileName
+    );
+  }, 10_000); // 10 s
+
+  it(
+    "4K Blender film",
+    async () => {
+      const downloader = new Downloader(blenderFilm);
+      const info = await downloader.getInfo();
+      const format4K = info.formats.find(
+        (format) => !format.hasAudio && format.hasVideo && format.height == 2160
+      );
+
+      const videoFileName = tmp.fileSync().name;
+      await downloader.saveStream(
+        await downloader.videoStream({ format: format4K }),
+        videoFileName
+      );
+
+      const audioFileName = tmp.fileSync().name;
+      await downloader.saveStream(
+        await downloader.audioStream(),
+        audioFileName
+      );
+
+      const outFile = DEBUG_SAVE
+        ? path.resolve("./out/blender-film.mp4")
+        : tmp.fileSync().name;
+      const hash = new sha256();
+
+      await expect(
+        downloader.createCombinedVideoAudio(
+          videoFileName,
+          audioFileName,
+          outFile
+        )
+      ).resolves.toBeUndefined();
+
+      const data = fs.readFileSync(outFile);
+      expect(new sha256().update(data)).toMatchSnapshot(); // Checking final video
+    },
+    60_000 * 5 // 5 min
+  );
 });
