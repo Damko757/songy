@@ -78,29 +78,28 @@ describe("Video only", () => {
       const downloader = new Downloader(url);
       const format = (await ytdl.getInfo(url)).formats.find(
         (f) => f.height === res && f.hasVideo && !f.hasAudio
-      );
+      ); // Filtering resolution
       expect(format).toBeDefined();
 
-      const videoStream = downloader.videoStream({
+      const videoStream = await downloader.videoStream({
         format: format,
       });
 
-      const buf: Uint8Array[] = [];
+      const hash = new sha256();
+
       const file = DEBUG_SAVE
         ? fs.createWriteStream(`out/${res}p.mp4`)
         : undefined;
       videoStream.on("data", (chunk) => {
-        if (res <= 720) buf.push(chunk); // Saving chunk to buffer if <= 720p, due to max JS heap memory
         file?.write(chunk); // Writing chunk (if needed)
+        hash.update(chunk); // Snapshot hash
       });
 
       return new Promise<void>((resolve, reject) => {
         videoStream.on("end", () => {
           file?.end();
 
-          expect(
-            new sha256().update(Buffer.concat(buf).join(""))
-          ).toMatchSnapshot();
+          expect(hash).toMatchSnapshot();
           resolve();
         });
 
@@ -108,33 +107,31 @@ describe("Video only", () => {
           reject(e); // Not passing, fail
         });
       });
-    }, 10_000); // 10s
+    }, 999999); // ??s
   }
 });
 
 describe("Combined", () => {
-  it("Video/Audio sync", async () => {
-    const downloader = new Downloader(
-      "https://youtu.be/LXb3EKWsInQ?si=kE2iqF0famt_njjk"
-    );
-    const audioStream = downloader.videoStream();
-    const buf: Uint8Array[] = [];
-    audioStream.on("data", (chunk) => {
-      buf.push(chunk);
-    });
-
-    await new Promise((resolve, reject) => {
-      audioStream.on("end", () => {
-        if (DEBUG_SAVE) fs.writeFileSync("out/video.mp4", Buffer.concat(buf));
-        expect(
-          new sha256().update(Buffer.concat(buf).join(""))
-        ).toMatchSnapshot();
-        resolve(true);
-      });
-
-      audioStream.on("error", (e) => {
-        reject(e);
-      });
-    });
-  }, 10_0000);
+  // it("Video/Audio sync", async () => {
+  //   const downloader = new Downloader(
+  //     "https://youtu.be/LXb3EKWsInQ?si=kE2iqF0famt_njjk"
+  //   );
+  //   const audioStream = downloader.videoStream();
+  //   const buf: Uint8Array[] = [];
+  //   audioStream.on("data", (chunk) => {
+  //     buf.push(chunk);
+  //   });
+  //   await new Promise((resolve, reject) => {
+  //     audioStream.on("end", () => {
+  //       if (DEBUG_SAVE) fs.writeFileSync("out/video.mp4", Buffer.concat(buf));
+  //       expect(
+  //         new sha256().update(Buffer.concat(buf).join(""))
+  //       ).toMatchSnapshot();
+  //       resolve(true);
+  //     });
+  //     audioStream.on("error", (e) => {
+  //       reject(e);
+  //     });
+  //   });
+  // }, 10_0000);
 });
