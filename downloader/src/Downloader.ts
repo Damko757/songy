@@ -60,21 +60,15 @@ export class Downloader {
   }
 
   /**
-   * Connects `source` and `target` streams with events
+   * Connects `source` and `target` streams with ytdl-core-specific events
    * @param sourceStream Stream to listen to events from
    * @param targetStream Stream to emit the events on
    */
   protected pipeStreams(sourceStream: Readable, targetStream: Writable) {
-    targetStream.on("error", (...args) => sourceStream.emit("close", ...args));
-    targetStream.on("close", (...args) => sourceStream.emit("close", ...args));
-    targetStream.on("finish", (...args) =>
-      sourceStream.emit("finish", ...args)
-    );
-    targetStream.on("end", (...args) => sourceStream.emit("end", ...args));
     targetStream.on("progress", (...args) =>
       sourceStream.emit("progress", ...args)
     );
-    targetStream.on("info", (...args) => sourceStream.emit("info", ...args));
+    targetStream.on("info", console.info);
     sourceStream.pipe(targetStream);
   }
 
@@ -85,18 +79,20 @@ export class Downloader {
   videoStream(options: downloadOptions = {}) {
     const outStream = new PassThrough();
 
-    ytdl
-      .getInfo(this.link)
-      .then((info) => {
-        const videoStream = ytdl.downloadFromInfo(info, {
-          filter: "video",
-          ...options,
+    return new Promise<Readable>((resolve) => {
+      ytdl
+        .getInfo(this.link)
+        .then((info) => {
+          const videoStream = ytdl.downloadFromInfo(info, {
+            filter: "video",
+            ...options,
+          });
+          this.pipeStreams(videoStream, outStream);
+        })
+        .catch((e) => {
+          outStream.emit("error", e);
         });
-        this.pipeStreams(videoStream, outStream);
-      })
-      .catch((e) => {
-        outStream.emit("error", e);
-      });
+    });
 
     return outStream;
   }
