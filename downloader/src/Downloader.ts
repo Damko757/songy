@@ -1,8 +1,6 @@
-import ffmpeg from "fluent-ffmpeg";
 import { PassThrough, Readable, Writable } from "stream";
 import fs from "fs";
 import cp, { exec, spawn } from "child_process";
-import ffmpegPath from "ffmpeg-static";
 import ytdl, { type downloadOptions } from "@distube/ytdl-core";
 
 export class Downloader {

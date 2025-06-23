@@ -1,4 +1,4 @@
-import { Downloader } from "../src/Downloader.ts";
+import { Downloader } from "../src/Downloader.js";
 import fs from "fs";
 import path, { resolve } from "path";
 import { beforeAll, describe, expect, it } from "@jest/globals";
