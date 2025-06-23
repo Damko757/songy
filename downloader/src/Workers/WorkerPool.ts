@@ -10,6 +10,9 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+export type DestroyT =
+  (typeof WorkerPool.DestroyType)[keyof typeof WorkerPool.DestroyType];
+
 /**
  * Creates pool of workers,
  * each worker can be assigned job from queued jobs. Each worker's event it sent via job.handler
@@ -30,8 +33,7 @@ export class WorkerPool {
   protected assignedJobs = new Map<number, WorkerJob>(); ///< WorkerID: WorkerJob
 
   protected onDestoroyCallback: undefined | (() => void) = undefined; ///< If not undefined, destroying is scheduled
-  protected destroyType: (typeof WorkerPool.DestroyType)[keyof typeof WorkerPool.DestroyType] =
-    WorkerPool.DestroyType.NONE;
+  protected destroyType: DestroyT = WorkerPool.DestroyType.NONE;
 
   constructor(numberOfWorkers: number) {
     if (numberOfWorkers <= 0)
@@ -148,7 +150,7 @@ export class WorkerPool {
    * @see WorkerPool.DestroyType
    * @returns Promise resolved when all workers are killed
    */
-  destroy(destroyType: Exclude<typeof this.destroyType, "none">) {
+  destroy(destroyType: Exclude<DestroyT, "none">) {
     return new Promise<void>((resolve, reject) => {
       this.destroyType = destroyType;
       this.onDestoroyCallback = () => {
@@ -166,6 +168,21 @@ export class WorkerPool {
 
       this.workerFinished();
     });
+  }
+
+  /**
+   * @returns Type of destroyment
+   */
+  getDestroyState() {
+    return this.destroyType;
+  }
+
+  /**
+   * @returns If worker pool was destroyed
+   * To know if it will be destroyed, @see `getDestroyState()`
+   */
+  isDestroyed() {
+    return this.destroyType == "none" && this.onDestoroyCallback === undefined;
   }
 
   /**
