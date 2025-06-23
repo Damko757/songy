@@ -1,15 +1,8 @@
 import type ytdl from "@distube/ytdl-core";
 import type { ObjectId } from "mongoose";
+import { DestroyT } from "../Workers/WorkerPool.js";
 
-/**
- * Command keywords for Downloader to execute/process
- */
-enum DownloadCommandType {
-  START = "DOWNLOADER_START", ///< Starts downloader and spawns its workers
-  EXIT = "DOWNLOADER_EXIT", ///< Kills/Ends downloader after all workers ended downloading (or force)
-  DOWNLOAD = "DOWNLOADER_DOWNLOAD", ///< Assigns new worker and starts downloading request
-}
-
+/// Worker communication commands ///
 interface DownloadJob {
   id: ObjectId; ///< MongoDB entry ID
   link: string; ///< Yt link or id
@@ -29,11 +22,6 @@ export type WorkerJobInstruction =
  */
 export interface WorkerJob {
   job: WorkerJobInstruction; ///< Data that will get Worker
-  // handlers: {
-  //   pong?: (value: any) => void; ///< Ping respons
-  //   progress?: (downloaded: number, total: number) => void; ///< Download progress callback
-  //   end?: () => void; ///< Download progress callback
-  // };
   handlers: {
     [event in WorkerMessage as event["type"]]?: (msg: event) => void;
   };
@@ -56,15 +44,33 @@ export type WorkerMessage =
       value: any;
     };
 
+/// WS communication commands ///
+
+/**
+ * Command keywords for Downloader to execute/process
+ */
+export enum DownloadCommandType {
+  START = "DOWNLOADER_START", ///< Starts downloader and spawns its workers
+  EXIT = "DOWNLOADER_EXIT", ///< Kills/Ends downloader after all workers ended downloading (or force)
+  DOWNLOAD = "DOWNLOADER_DOWNLOAD", ///< Assigns new worker and starts downloading request
+}
 /**
  * Download command for Downloader with payload type for specific command
  */
 export type DownloadCommand =
   | {
-      command: DownloadCommandType.START;
+      action: DownloadCommandType.START;
       numberOfWorkers: number; ///< Size of worker pool (specific number needs to be benched)
     }
-  | { command: DownloadCommandType.EXIT; force?: boolean }
+  | {
+      action: DownloadCommandType.EXIT;
+      force?: Exclude<DestroyT, "none">;
+    }
   | ({
-      command: DownloadCommandType.DOWNLOAD;
+      action: DownloadCommandType.DOWNLOAD;
     } & DownloadJob);
+
+/**
+ * Message from Command Processor to client (API)
+ */
+export type DownloadMessage = {};
