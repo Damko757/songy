@@ -1,7 +1,9 @@
 import { WebSocketServer, WebSocket } from "ws";
 import {
-  DownloadCommand,
-  DownloadCommandType,
+  DownloaderCommand,
+  DownloaderCommandResponse as DownloaderCommandResponse,
+  DownloaderCommandResponseType,
+  DownloaderCommandType,
   WorkerJob,
   WorkerMessage,
 } from "./Command.js";
@@ -13,11 +15,11 @@ import chalk from "chalk";
  * Listens to commands and dispatches events (WorkerPool download progress, finished) to clients
  */
 export class CommandProcessor {
-  wss: WebSocketServer; ///< WebSocketServer
-  workerPool?: WorkerPool;
+  protected wss: WebSocketServer; ///< WebSocketServer
+  protected workerPool?: WorkerPool; ///< Pool of workers doing the actual hard work
 
   constructor() {
-    this.wss = new WebSocketServer();
+    this.wss = new WebSocketServer({ port: 8080 });
     this.bindWSS();
   }
 
@@ -34,7 +36,7 @@ export class CommandProcessor {
 
     this.wss.on("connection", (ws: WebSocket) => {
       ws.on("message", (data: string) => {
-        const command = JSON.parse(data) as DownloadCommand;
+        const command = JSON.parse(data) as DownloaderCommand;
         this.processCommand(ws, command); // Processing commands from API (client)
       });
     });
@@ -44,22 +46,46 @@ export class CommandProcessor {
    * Processes command from WebSocket
    * @param command Command from Client's message
    */
-  protected processCommand(ws: WebSocket, command: DownloadCommand) {
+  protected processCommand(ws: WebSocket, command: DownloaderCommand) {
     switch (command.action) {
-      case DownloadCommandType.START:
+      case DownloaderCommandType.START:
         if (this.workerPool !== undefined) {
           // WP already started
-          ws.emit("error", "WorkerPool already created!");
+          this.sendResponse(ws, {
+            type: DownloaderCommandResponseType.ERROR,
+            error: "WorkerPool already created!",
+          });
+
           return;
         }
         this.workerPool = new WorkerPool(command.numberOfWorkers);
+        this.sendResponse(this.wss.clients, {
+          type: DownloaderCommandResponseType.START,
+          numberOfWorkers: command.numberOfWorkers,
+        });
         return;
-      case DownloadCommandType.EXIT:
-        this.workerPool?.destroy(command.force ?? "finish-all");
+      case DownloaderCommandType.EXIT:
+        // Exiting and notifying API
+        this.workerPool
+          ?.destroy(command.force ?? "finish-all")
+          .then(() => {
+            this.sendResponse(ws, { type: DownloaderCommandResponseType.EXIT });
+          })
+          .catch((e) =>
+            this.sendResponse(ws, {
+              type: DownloaderCommandResponseType.ERROR,
+              error: e,
+            })
+          );
+
         return;
-      case DownloadCommandType.DOWNLOAD:
+      case DownloaderCommandType.DOWNLOAD:
         if (!this.workerPool) {
-          ws.emit("error", "WorkerPool not started!");
+          const error: DownloaderCommandResponse = {
+            type: DownloaderCommandResponseType.ERROR,
+            error: "WorkerPool not started!",
+          };
+          this.sendResponse(ws, error);
           return;
         }
 
@@ -85,6 +111,15 @@ export class CommandProcessor {
     message: Extract<WorkerMessage, { type: "progress" }>
   ) {
     // TODO
+    console.log(
+      message.downloaded,
+      "of",
+      message.total,
+      "[",
+      ((message.downloaded / message.total) * 100).toFixed(3),
+      "%",
+      "]"
+    );
   }
 
   /**
@@ -98,5 +133,44 @@ export class CommandProcessor {
     message: Extract<WorkerMessage, { type: "end" }>
   ) {
     // TODO
+  }
+
+  /**
+   * Sends response `message` to `ws` o
+   * @param ws Websocket or Websockets to send message to
+   * @param message Response object to send to client/ws
+   * @returns Promise resolve upon write off of the data
+   */
+  protected sendResponse(
+    ws: WebSocket | Iterable<WebSocket>,
+    message: DownloaderCommandResponse | string
+  ) {
+    // Converting to string if object
+    const data = typeof message == "string" ? message : JSON.stringify(message);
+
+    // Sending to single client
+    if (ws instanceof WebSocket) {
+      return new Promise<void>((resolve, reject) => {
+        ws.send(data, (err) => {
+          if (!err) resolve();
+          else reject(err);
+        });
+      });
+    }
+    // Sending to all clients
+    else {
+      return new Promise<void>((resolve, reject) => {
+        const promises: Promise<void>[] = [];
+        // Send to each client
+        for (const client of ws) {
+          promises.push(this.sendResponse(client, data));
+        }
+
+        // Resolve upon all written off
+        Promise.all(promises)
+          .then(() => resolve())
+          .catch(reject);
+      });
+    }
   }
 }

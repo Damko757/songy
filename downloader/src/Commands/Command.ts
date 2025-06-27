@@ -49,28 +49,43 @@ export type WorkerMessage =
 /**
  * Command keywords for Downloader to execute/process
  */
-export enum DownloadCommandType {
-  START = "DOWNLOADER_START", ///< Starts downloader and spawns its workers
-  EXIT = "DOWNLOADER_EXIT", ///< Kills/Ends downloader after all workers ended downloading (or force)
+export enum DownloaderCommandType {
+  START = "START_DOWNLOADER", ///< Starts downloader and spawns its workers
+  EXIT = "EXIT_DOWNLOADER", ///< Kills/Ends downloader after all workers ended downloading (or force)
   DOWNLOAD = "DOWNLOADER_DOWNLOAD", ///< Assigns new worker and starts downloading request
 }
 /**
- * Download command for Downloader with payload type for specific command
+ * Command for Downloader with payload type for specific command
  */
-export type DownloadCommand =
+export type DownloaderCommand =
   | {
-      action: DownloadCommandType.START;
+      action: DownloaderCommandType.START;
       numberOfWorkers: number; ///< Size of worker pool (specific number needs to be benched)
     }
   | {
-      action: DownloadCommandType.EXIT;
+      action: DownloaderCommandType.EXIT;
       force?: Exclude<DestroyT, "none">;
     }
   | ({
-      action: DownloadCommandType.DOWNLOAD;
+      action: DownloaderCommandType.DOWNLOAD;
     } & DownloadJob);
+
+/**
+ * Downloader's message for API
+ */
+export enum DownloaderCommandResponseType {
+  ERROR = "DOWNLOADER_ERROR", ///< Error happened
+  EXIT = "DOWNLOADER_EXIT", ///< Worker pool destroyed
+  START = "DOWNLOADER_START", ///< Worker pool successfully started
+}
 
 /**
  * Message from Command Processor to client (API)
  */
-export type DownloadMessage = {};
+export type DownloaderCommandResponse =
+  | {
+      type: DownloaderCommandResponseType.ERROR;
+      error: string | object;
+    }
+  | { type: DownloaderCommandResponseType.EXIT }
+  | { type: DownloaderCommandResponseType.START; numberOfWorkers: number };
