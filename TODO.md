@@ -5,16 +5,27 @@
 3. [ ] Add last.fm metadata
 4. [ ] Add Musixmatch lyrics
 
-# Downloading
+# Workers
 
-## Audio
+1. [x] Implement download API
+2. [ ] Implement file generic path
+3. [ ] Implement metadata API
 
-1. [ ] Create Downloader
-2. [ ] Create Downloader with Metadata Support
+# API
 
-## Video
+1. [ ] Use ENV port for WS
+2. [ ] Create client download API
+3. [ ] Create client WSS for downloading status
 
-1. [ ] Video
+# MongoDB
+
+1. [ ] Create song Schema
+
+# Docker
+
+1. [ ] Dockerize Downloader
+2. [ ] Dockerize API
+3. [ ] Dockerize Web
 
 # Trimmer
 
