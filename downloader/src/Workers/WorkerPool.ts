@@ -160,9 +160,9 @@ export class WorkerPool {
 
       if (destroyType == "force") {
         // Immidiate worker termination
-        Promise.all(this.workers.map((worker) => worker.terminate())).then(() =>
-          this.onDestoroyCallback?.()
-        );
+        Promise.all(this.workers.map((worker) => worker.terminate()))
+          .then(() => this.onDestoroyCallback?.())
+          .catch(reject);
         return;
       }
 
