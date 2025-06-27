@@ -32,7 +32,7 @@ export class WorkerPool {
   protected idleWorkers = new Dequeue<number>(); ///< Index of idle workers
   protected assignedJobs = new Map<number, WorkerJob>(); ///< WorkerID: WorkerJob
 
-  protected onDestoroyCallback: undefined | (() => void) = undefined; ///< If not undefined, destroying is scheduled
+  protected onDestroyCallback: undefined | (() => void) = undefined; ///< If not undefined, destroying is scheduled
   protected destroyType: DestroyT = WorkerPool.DestroyType.NONE;
 
   constructor(numberOfWorkers: number) {
@@ -123,7 +123,7 @@ export class WorkerPool {
 
     // Immidiate worker termination
     Promise.all(this.workers.map((worker) => worker.terminate())).then(() =>
-      this.onDestoroyCallback?.()
+      this.onDestroyCallback?.()
     );
   }
 
@@ -153,15 +153,15 @@ export class WorkerPool {
   destroy(destroyType: Exclude<DestroyT, "none">) {
     return new Promise<void>((resolve, reject) => {
       this.destroyType = destroyType;
-      this.onDestoroyCallback = () => {
-        this.onDestoroyCallback = undefined; // Destroying callback
+      this.onDestroyCallback = () => {
+        this.onDestroyCallback = undefined; // Destroying callback
         resolve();
       };
 
       if (destroyType == "force") {
         // Immidiate worker termination
         Promise.all(this.workers.map((worker) => worker.terminate()))
-          .then(() => this.onDestoroyCallback?.())
+          .then(() => this.onDestroyCallback?.())
           .catch(reject);
         return;
       }
@@ -182,7 +182,7 @@ export class WorkerPool {
    * To know if it will be destroyed, @see `getDestroyState()`
    */
   isDestroyed() {
-    return this.destroyType == "none" && this.onDestoroyCallback === undefined;
+    return this.destroyType == "none" && this.onDestroyCallback === undefined;
   }
 
   /**
