@@ -31,6 +31,7 @@ export interface WorkerJob {
  * Message from Worker to parent port about state of download
  */
 export type WorkerMessage =
+  | { type: "error"; error: any }
   | {
       type: "progress"; ///< Downloading file. If downloaded == total, FFMPEG conversion is underway
       downloaded: number;

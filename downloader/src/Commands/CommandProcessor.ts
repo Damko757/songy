@@ -18,9 +18,38 @@ export class CommandProcessor {
   protected wss: WebSocketServer; ///< WebSocketServer
   protected workerPool?: WorkerPool; ///< Pool of workers doing the actual hard work
 
+  protected downloadStatuses = new Map<
+    ObjectId,
+    { downloaded: number; total: number }
+  >();
+
   constructor() {
     this.wss = new WebSocketServer({ port: 8080 });
     this.bindWSS();
+    this._print();
+  }
+
+  /**
+   * For debug only
+   * @deprecated
+   */
+  protected _print() {
+    setInterval(() => {
+      console.clear();
+      for (const [id, state] of this.downloadStatuses.entries()) {
+        console.log(
+          chalk.cyan(id),
+          state.downloaded,
+          "of",
+          state.total,
+          "[",
+          ((state.downloaded / state.total) * 100).toFixed(3),
+          "%",
+          "]"
+        );
+      }
+      console.log("");
+    }, 500);
   }
 
   /**
@@ -61,7 +90,7 @@ export class CommandProcessor {
         this.workerPool = new WorkerPool(command.numberOfWorkers);
         this.sendResponse(this.wss.clients, {
           type: DownloaderCommandResponseType.START,
-          numberOfWorkers: command.numberOfWorkers,
+          numberOfWorkers: this.workerPool.size,
         });
         return;
       case DownloaderCommandType.EXIT:
@@ -110,16 +139,12 @@ export class CommandProcessor {
     id: ObjectId,
     message: Extract<WorkerMessage, { type: "progress" }>
   ) {
+    this.downloadStatuses.set(id, {
+      downloaded: message.downloaded,
+      total: message.total,
+    });
+
     // TODO
-    console.log(
-      message.downloaded,
-      "of",
-      message.total,
-      "[",
-      ((message.downloaded / message.total) * 100).toFixed(3),
-      "%",
-      "]"
-    );
   }
 
   /**
@@ -132,6 +157,7 @@ export class CommandProcessor {
     id: ObjectId,
     message: Extract<WorkerMessage, { type: "end" }>
   ) {
+    this.downloadStatuses.delete(id); // Removing status from tracking (if tracked`)
     // TODO
   }
 
