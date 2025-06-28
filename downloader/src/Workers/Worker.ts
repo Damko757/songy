@@ -8,17 +8,8 @@ import {
 import { Downloader } from "../Downloader.js";
 import path from "node:path";
 import ytdl from "@distube/ytdl-core";
+import fsPromises from "fs/promises";
 import { ObjectId } from "mongoose";
-
-/**
- * Resolves download path
- * @param id Id of file to download
- * @param extra Additional value, if temporary file is created (e. g. audio and video-only files, then merge)
- */
-function downloadPath(id: ObjectId, extra?: string) {
-  // TODO: Fix for special directory
-  return `${id}${extra ? "_" + extra : ""}`;
-}
 
 /**
  * Downloads only single stream. Notifies parent about Progress, End and Error
@@ -45,7 +36,7 @@ async function downloadSingleStream(
   });
 
   downloader
-    .saveStream(stream, downloadPath(job.id))
+    .saveStream(stream, Downloader.downloadPath(job.id))
     .then(() => {
       // Stream downloaded
       const message: WorkerMessage = {
@@ -84,15 +75,15 @@ async function download(
       total: 0,
       downloaded: 0,
       streamPromise: downloader.audioStream(job.options.audio ?? {}),
-      filePromise: undefined as undefined | Promise<void>,
-      filename: downloadPath(job.id, "audio"),
+      filePromise: undefined as undefined | Promise<string>,
+      filename: Downloader.downloadPath(job.id, "audio"),
     },
     video: {
       total: 0,
       downloaded: 0,
       streamPromise: downloader.videoStream(job.options.video ?? {}),
-      filePromise: undefined as undefined | Promise<void>,
-      filename: downloadPath(job.id, "video"),
+      filePromise: undefined as undefined | Promise<string>,
+      filename: Downloader.downloadPath(job.id, "video"),
     },
   };
 
@@ -119,14 +110,29 @@ async function download(
     });
   }
 
+  // Waiting for streams
+  await Promise.all([streams.audio.streamPromise, streams.video.streamPromise]);
+
+  // Check for non-awaited filePromise
+  if (
+    streams.audio.filePromise === undefined ||
+    streams.video.filePromise === undefined
+  )
+    throw new Error("No Promise specified!");
+
   // Waiting for download of all streams, then merging
   Promise.all([streams.audio.filePromise, streams.video.filePromise])
-    .then(async () => {
+    .then(async ([audioFilename, videoFilename]) => {
       await downloader.createCombinedVideoAudio(
         streams.video.filename,
         streams.audio.filename,
-        downloadPath(job.id)
+        Downloader.downloadPath(job.id)
       );
+
+      // Removing oringal files
+      fsPromises.rm(audioFilename);
+      fsPromises.rm(videoFilename);
+
       // Streams downloaded
       const message: WorkerMessage = {
         type: "end",
