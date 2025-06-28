@@ -59,7 +59,13 @@ export class CommandProcessor {
    */
   protected bindWSS() {
     this.wss.on("listening", () =>
-      console.log(chalk.bold.greenBright("Command WSS listening!"))
+      console.log(
+        chalk.bold.greenBright(
+          `Command WSS listening on ${chalk.underline(
+            Number(process.env.DOWNLOADER_WS_PORT)
+          )}!`
+        )
+      )
     );
     this.wss.on("close", () =>
       console.log(chalk.bold.redBright("Command WSS closed!"))
