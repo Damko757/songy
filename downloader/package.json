@@ -7,7 +7,7 @@
   "scripts": {
     "start": "NODE_PATH=./build node build/index.js",
     "build": "tsc -p ./tsconfig.build.json",
-    "dev": "nodemon src/index.ts",
+    "dev": "npx tsx --watch src/index.ts",
     "test": "npm run build && NODE_OPTIONS=--experimental-vm-modules jest --verbose --coverage --config jest.config.json --only=true"
   },
   "author": "Damián Jambor",
@@ -27,7 +27,6 @@
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.6",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
 }
