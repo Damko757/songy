@@ -13,7 +13,7 @@
 
 # API
 
-1. [ ] Use ENV port for WS
+1. [x] Use ENV port for WS
 2. [ ] Create client download API
 3. [ ] Create client WSS for downloading status
 

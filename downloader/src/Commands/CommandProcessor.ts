@@ -24,9 +24,11 @@ export class CommandProcessor {
   >();
 
   constructor() {
-    this.wss = new WebSocketServer({ port: 8080 });
+    this.wss = new WebSocketServer({
+      port: Number(process.env.DOWNLOADER_WS_PORT),
+    });
     this.bindWSS();
-    this._print();
+    // this._print();
   }
 
   /**
