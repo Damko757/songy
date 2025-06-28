@@ -1,19 +1,26 @@
 import { Downloader } from "../src/Downloader.js";
 import fs from "fs";
 import path, { resolve } from "path";
-import { beforeAll, describe, expect, it } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import { sha256 } from "sha.js";
 import ytdl from "@distube/ytdl-core";
 import readline from "readline";
 import tmp from "tmp";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DEBUG_SAVE = true;
 beforeAll(() => {
-  const files = fs.readdirSync("./out");
+  Downloader.downloadDirectory = path.resolve(__dirname, "out");
+  const files = fs.readdirSync(Downloader.downloadPath(""));
   for (const file of files) {
     if (file.endsWith(".jpg")) continue;
-    fs.unlinkSync(path.join("./out", file));
+    fs.unlinkSync(Downloader.downloadPath(file));
   }
+});
+afterAll(() => {
+  fs.rmSync(Downloader.downloadPath(""), { recursive: true });
 });
 
 describe("Audio only", () => {
@@ -23,7 +30,7 @@ describe("Audio only", () => {
         link //https://www.youtube.com/watch?v=
       );
       const file = DEBUG_SAVE
-        ? fs.createWriteStream(`out/audio-${link}.mp3`)
+        ? fs.createWriteStream(Downloader.downloadPath(`audio-${link}.mp3`))
         : undefined;
       const hash = new sha256();
 
@@ -32,11 +39,11 @@ describe("Audio only", () => {
         hash.update(chunk);
         file?.write(chunk); // Debug save
       });
-      audioStream.on("progress", (chunks, downloaded, total) => {
-        readline.clearLine(process.stderr, 1);
-        process.stdout.write(((downloaded / total) * 100).toFixed(3) + "%");
-        readline.cursorTo(process.stderr, 0);
-      });
+      // audioStream.on("progress", (chunks, downloaded, total) => {
+      //   readline.clearLine(process.stderr, 1);
+      //   process.stdout.write(((downloaded / total) * 100).toFixed(3) + "%");
+      //   readline.cursorTo(process.stderr, 0);
+      // });
 
       return new Promise<void>((resolve, reject) => {
         audioStream.on("end", () => {
@@ -76,7 +83,7 @@ describe("Video only", () => {
         const hash = new sha256();
 
         const file = DEBUG_SAVE
-          ? fs.createWriteStream(`out/video-${res}p.mp4`)
+          ? fs.createWriteStream(Downloader.downloadPath(`video-${res}p.mp4`))
           : undefined;
         videoStream.on("data", (chunk) => {
           file?.write(chunk); // Writing chunk (if needed)
@@ -114,11 +121,11 @@ describe("Combined", () => {
     );
 
     const videoFileName = DEBUG_SAVE
-      ? "./out/video-audio-sync-VIDEO.mp4"
+      ? Downloader.downloadPath("video-audio-sync-VIDEO.mp4")
       : tmp.fileSync().name;
     const videoFileStream = fs.createWriteStream(videoFileName);
     const audioFileName = DEBUG_SAVE
-      ? "./out/video-audio-sync-AUDIO.mp4"
+      ? Downloader.downloadPath("video-audio-sync-AUDIO.mp4")
       : tmp.fileSync().name;
     const audioFileStream = fs.createWriteStream(audioFileName);
 
@@ -128,7 +135,6 @@ describe("Combined", () => {
     });
     videoStream
       .on("info", (_, format: ytdl.videoFormat) => {
-        console.log("video Info");
         expect(format.hasVideo).toBeTruthy();
         expect(format.hasAudio).toBeFalsy();
         expect(format.height).toBe(1080);
@@ -139,8 +145,6 @@ describe("Combined", () => {
       });
     await new Promise<void>((resolve) =>
       videoStream.on("end", () => {
-        console.log("video end");
-
         expect(videoHash).toMatchSnapshot();
         resolve();
       })
@@ -150,8 +154,6 @@ describe("Combined", () => {
     const audioStream = await downloader.audioStream();
     audioStream
       .on("info", (_, format: ytdl.videoFormat) => {
-        console.log("audio Info");
-
         expect(format.hasAudio).toBeTruthy();
         expect(format.hasVideo).toBeFalsy();
       })
@@ -161,15 +163,13 @@ describe("Combined", () => {
       });
     await new Promise<void>((resolve) =>
       audioStream.on("end", () => {
-        console.log("audio end");
-
         expect(audioHash).toMatchSnapshot();
         resolve();
       })
     );
 
     const outFileName = DEBUG_SAVE
-      ? "./out/video-audio-sync.mp4"
+      ? Downloader.downloadPath("video-audio-sync.mp4")
       : tmp.fileSync().name;
 
     // Combination
@@ -202,7 +202,7 @@ describe("Combined", () => {
       );
 
       const outFile = DEBUG_SAVE
-        ? path.resolve("./out/blender-film.mp4")
+        ? Downloader.downloadPath("blender-film.mp4")
         : tmp.fileSync().name;
       const hash = new sha256();
 
