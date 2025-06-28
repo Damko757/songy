@@ -2,6 +2,12 @@ import { PassThrough, Readable, Writable } from "stream";
 import fs from "fs";
 import cp, { exec, spawn } from "child_process";
 import ytdl, { type downloadOptions } from "@distube/ytdl-core";
+import { ObjectId } from "mongoose";
+import path, { dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export class Downloader {
   link: string;
@@ -10,9 +16,26 @@ export class Downloader {
     audio: ["mp3"],
     video: ["mp4"],
   };
+  static downloadDirectory = path.resolve(__dirname, "..", "out");
 
   constructor(link: string) {
     this.link = link;
+  }
+
+  /**
+   * Resolves download path
+   * @param id Id of file to download
+   * @param extra Additional value, if temporary file is created (e. g. audio and video-only files, then merge)
+   */
+  static downloadPath(id: ObjectId | string, extra?: string) {
+    if (!fs.existsSync(Downloader.downloadDirectory))
+      fs.mkdirSync(Downloader.downloadDirectory);
+
+    // TODO: Fix for special directory
+    return path.resolve(
+      Downloader.downloadDirectory,
+      `${id}${extra ? "_" + extra : ""}`
+    );
   }
 
   /**
@@ -119,14 +142,14 @@ export class Downloader {
    * Saves `stream` into file `filename`
    * @param stream Readable stream to save
    * @param filename Of saved stream
-   * @returns Promise resolved upon completed write
+   * @returns Promise resolved with filename upon completed write
    */
   async saveStream(stream: Readable, filename: string) {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       console.info("Saving to:", filename);
       const fileStream = fs.createWriteStream(filename);
       fileStream.on("error", reject);
-      fileStream.on("close", () => resolve());
+      fileStream.on("close", () => resolve(filename));
       stream.pipe(fileStream);
     });
   }
@@ -144,7 +167,7 @@ export class Downloader {
     outFilename: string
   ) {
     return new Promise<void>((resolve, reject) => {
-      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest ${outFilename}`;
+      const cmd = `ffmpeg -f mp4 -i ${videoFilename} -f mp3 -i ${audioFilename} -c:v copy -c:a aac -shortest -f mp4 ${outFilename} -y`;
 
       exec(cmd, (error, stdout, stderr) => {
         if (error) {
