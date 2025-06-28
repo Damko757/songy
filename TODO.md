@@ -8,7 +8,7 @@
 # Workers
 
 1. [x] Implement download API
-2. [ ] Implement file generic path
+2. [x] Implement file generic path
 3. [ ] Implement metadata API
 
 # API

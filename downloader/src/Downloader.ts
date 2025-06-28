@@ -17,7 +17,14 @@ export class Downloader {
     audio: ["mp3"],
     video: ["mp4"],
   };
-  static downloadDirectory = path.resolve(__dirname, "..", "out");
+  static downloadDirectory = path.resolve(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    "..",
+    "out"
+  );
 
   constructor(link: string) {
     this.link = link;
