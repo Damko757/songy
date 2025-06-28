@@ -1,34 +1,47 @@
-import { beforeAll, describe, expect, it, jest } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { WorkerPool } from "../src/Workers/WorkerPool.js";
 import { ObjectId } from "mongoose";
 import { Worker } from "node:worker_threads";
 import { WorkerJob } from "../src/Commands/Command.js";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { sha256 } from "sha.js";
+import fs from "fs";
+import { Downloader } from "../src/Downloader.js";
+import { afterEach } from "node:test";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 class WorkerPoolTest extends WorkerPool {
   protected workerScriptFile() {
+    // Should regenerate
     return path.resolve(__dirname, "../dist/downloader/src/Workers/Worker.js");
   }
 }
 
+beforeAll(() => {
+  Downloader.downloadDirectory = path.resolve(
+    __dirname,
+    "../dist/downloader/out"
+  ); // Temporary directory
+});
+afterAll(() => {
+  // Removing out folder
+  fs.rmSync(Downloader.downloadDirectory, { recursive: true });
+});
+
 describe("Invalid behaviour", () => {
   it("Invalid worker number", () => {
-    expect(() => new WorkerPoolTest(0)).toThrow();
-    expect(() => new WorkerPoolTest(-1)).toThrow("Invalid number of workers");
-    expect(
-      async () => await new WorkerPoolTest(1).destroy("force")
-    ).not.toThrow();
+    expect(() => new WorkerPool(0)).toThrow();
+    expect(() => new WorkerPool(-1)).toThrow("Invalid number of workers");
+    expect(async () => await new WorkerPool(1).destroy("force")).not.toThrow();
   });
 });
 
-describe("Executing tasks in order", () => {
+describe("Initialization", () => {
   for (let i = 1; i <= 15; i++) {
     it(`Finish-all pings with ${i} workers`, () => {
-      expect.assertions(10);
       const wp = new WorkerPoolTest(i);
       const jobs: WorkerJob[] = Array.from(Array(10)).map((_, i) => {
         const job: WorkerJob = {
@@ -72,4 +85,70 @@ describe("Executing tasks in order", () => {
 
     return wp.destroy("finish-all");
   });
+});
+
+describe("Downloading", () => {
+  it("5 Concurrent videos", () => {
+    const wp = new WorkerPoolTest(5);
+
+    return Promise.all(
+      Array.from(Array(5)).map(
+        (_, i) =>
+          new Promise<void>((resolve) => {
+            let downloaded = 0;
+            let total = 0;
+            const id = "ABCDE"[i] as unknown as ObjectId;
+            wp.addJob({
+              job: {
+                action: "download",
+                id: id,
+                link: "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
+                options: {
+                  video: { quality: "lowestvideo" },
+                  audio: { quality: "lowestaudio" },
+                },
+                type: "video",
+              },
+              handlers: {
+                progress: (msg) => {
+                  downloaded = msg.downloaded;
+                  total = msg.total;
+                },
+                end: async () => {
+                  expect(downloaded).toBe(total);
+                  expect(total).not.toBe(0);
+                  expect(total).toMatchSnapshot();
+
+                  // Checking if temporary files are deleted
+                  // They are deleted asyncly, hence the wait
+                  await new Promise<void>((resolve) => {
+                    setTimeout(() => {
+                      expect(
+                        fs.existsSync(Downloader.downloadPath(id, "audio"))
+                      ).toBeFalsy();
+                      expect(
+                        fs.existsSync(Downloader.downloadPath(id, "video"))
+                      ).toBeFalsy();
+                      resolve();
+                    }, 1000);
+                  });
+
+                  // Real file kept
+                  expect(() =>
+                    fs.accessSync(Downloader.downloadPath(id))
+                  ).not.toThrow();
+
+                  // TODO fetch from correct directory
+                  const hash = new sha256();
+                  hash.update(fs.readFileSync(Downloader.downloadPath(id)));
+                  expect(hash).toMatchSnapshot();
+
+                  resolve();
+                },
+              },
+            });
+          })
+      )
+    );
+  }, 120_000);
 });
