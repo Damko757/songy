@@ -76,14 +76,14 @@ async function download(
       downloaded: 0,
       streamPromise: downloader.audioStream(job.options.audio ?? {}),
       filePromise: undefined as undefined | Promise<string>,
-      filename: Downloader.downloadPath(job.id, job.extension, "audio"),
+      filename: Downloader.downloadPath(job.id, "mp3", "audio"),
     },
     video: {
       total: 0,
       downloaded: 0,
       streamPromise: downloader.videoStream(job.options.video ?? {}),
       filePromise: undefined as undefined | Promise<string>,
-      filename: Downloader.downloadPath(job.id, job.extension, "video"),
+      filename: Downloader.downloadPath(job.id, "mp4", "video"),
     },
   };
 

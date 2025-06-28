@@ -21,10 +21,7 @@ class WorkerPoolTest extends WorkerPool {
 }
 
 beforeAll(() => {
-  Downloader.downloadDirectory = path.resolve(
-    __dirname,
-    "../dist/downloader/out"
-  ); // Temporary directory
+  Downloader.downloadDirectory = path.resolve(__dirname, "../../out"); // Temporary directory
 });
 afterAll(() => {
   // Removing out folder
