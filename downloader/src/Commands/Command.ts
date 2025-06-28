@@ -1,14 +1,17 @@
 import type ytdl from "@distube/ytdl-core";
 import type { ObjectId } from "mongoose";
 import { DestroyT } from "../Workers/WorkerPool.js";
+import { AudioMetadata } from "../../../shared/Entities/Metadata/Metadata.js";
+import { MediaFileExtension } from "../../../api/src/Database/Schemas/MediaFile.js";
 
 /// Worker communication commands ///
 export interface DownloadJob {
   id: ObjectId; ///< MongoDB entry ID
-  extension: "mp4" | "mp3"; ///< MongoDB entry ID
+  extension: MediaFileExtension["video"] | MediaFileExtension["audio"]; ///< File saved to user with extension (to know file's encoding)
   link: string; ///< Yt link or id
   type: "audio" | "video" | "video-only"; ///< Type of file to download
   options: { audio?: ytdl.downloadOptions; video?: ytdl.downloadOptions }; ///< Download options for ytdl
+  audioMetadata?: AudioMetadata; ///< Song's metadata to save into file. If !== undefined, the same worker configures it, then calls end
 }
 
 /**
@@ -16,6 +19,11 @@ export interface DownloadJob {
  */
 export type WorkerJobInstruction =
   | ({ action: "download" } & DownloadJob)
+  | {
+      action: "bind-audio-metadata"; ///< Only sets Metadata to file (file must be in READY state, or else error)
+      id: ObjectId;
+      audioMetadata: AudioMetadata;
+    }
   | { action: "ping"; value: any };
 
 /**

@@ -20,7 +20,7 @@ beforeAll(() => {
   }
 });
 afterAll(() => {
-  fs.rmSync(Downloader.downloadPath(""), { recursive: true });
+  // fs.rmSync(Downloader.downloadPath(""), { recursive: true });
 });
 
 describe("Audio only", () => {
@@ -176,8 +176,7 @@ describe("Combined", () => {
     await downloader.createCombinedVideoAudio(
       videoFileName,
       audioFileName,
-      outFileName,
-      "mp4"
+      outFileName
     );
   }, 30_000); // 30 s
 
@@ -211,8 +210,7 @@ describe("Combined", () => {
         downloader.createCombinedVideoAudio(
           videoFileName,
           audioFileName,
-          outFile,
-          "mp4"
+          outFile
         )
       ).resolves.toBeUndefined();
 

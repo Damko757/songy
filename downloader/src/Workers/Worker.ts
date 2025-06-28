@@ -126,8 +126,7 @@ async function download(
       await downloader.createCombinedVideoAudio(
         streams.video.filename,
         streams.audio.filename,
-        Downloader.downloadPath(job.id),
-        job.extension
+        Downloader.downloadPath(job.id)
       );
 
       // Removing oringal files

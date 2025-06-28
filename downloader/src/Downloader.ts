@@ -6,6 +6,7 @@ import { ObjectId } from "mongoose";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { DownloadJob } from "./Commands/Command.js";
+import { MediaFileExtension } from "../../api/src/Database/Schemas/MediaFile.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,9 +14,9 @@ const __dirname = dirname(__filename);
 export class Downloader {
   link: string;
 
-  static supportedExtensions: Record<"audio" | "video", string[]> = {
-    audio: ["mp3"],
-    video: ["mp4"],
+  static supportedExtensions = {
+    audio: ["mp3"] as MediaFileExtension["audio"][],
+    video: ["mp4"] as MediaFileExtension["video"][],
   };
   static downloadDirectory = path.resolve(
     __dirname,
@@ -70,6 +71,7 @@ export class Downloader {
    * Streams audio only
    * Original stream is converted via FFMPEG. Progress and info event are added as an extra
    * @param options
+   * @param extension Output file format
    * @returns PassThrough audio stream
    */
   audioStream(options: ytdl.downloadOptions & { bitrate?: number } = {}) {
@@ -81,12 +83,14 @@ export class Downloader {
             options.format ??
             ytdl.chooseFormat(info.formats, {
               quality: options.quality ?? "highestaudio",
+              filter: "audio",
               ...options,
             }); // Fetching format for FFMPEG
 
           const videoStream = ytdl.downloadFromInfo(info, {
             quality: options.quality ?? "highestaudio",
             filter: "audio",
+            format: format,
             ...options,
           });
 
@@ -137,8 +141,17 @@ export class Downloader {
       ytdl
         .getInfo(this.link)
         .then((info) => {
+          const format =
+            options.format ??
+            ytdl.chooseFormat(info.formats, {
+              quality: options.quality ?? "highestvideo",
+              filter: "video",
+              ...options,
+            }); // Fetching format for FFMPEG
+
           const videoStream = ytdl.downloadFromInfo(info, {
             filter: "video",
+            format: format,
             ...options,
           });
           return resolve(videoStream);
@@ -165,20 +178,19 @@ export class Downloader {
 
   /**
    * Combines video and audio files into single MP4 file
+   * @todo Support other file types - Strong re-encoding capabilities required
    * @param videoFilename Filename of video file
    * @param audioFilename Filename of audio file
    * @param outFilename Filename of resulting video file
-   * @param format Format of output file (extension)
    * @returns Promise resolved upon completed combining
    */
   createCombinedVideoAudio(
     videoFilename: string,
     audioFilename: string,
-    outFilename: string,
-    format: DownloadJob["extension"] = "mp4"
+    outFilename: string
   ) {
     return new Promise<void>((resolve, reject) => {
-      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest -f ${format} ${outFilename} -y`;
+      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest -f mp4 ${outFilename} -y`;
 
       exec(cmd, (error, stdout, stderr) => {
         if (error) {
