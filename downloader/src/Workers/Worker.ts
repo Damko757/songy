@@ -33,7 +33,7 @@ async function downloadSingleStream(
 
   const stream = await downloader[
     isAudioStream ? "audioStream" : "videoStream"
-  ](job.options); // Only audio OR video stream
+  ](job.options[isAudioStream ? "audio" : "video"] ?? {}); // Only audio OR video stream
 
   stream.on("progress", (chunk, downloaded, total) => {
     const message: WorkerMessage = {
@@ -83,14 +83,14 @@ async function download(
     audio: {
       total: 0,
       downloaded: 0,
-      streamPromise: downloader.audioStream(job.options),
+      streamPromise: downloader.audioStream(job.options.audio ?? {}),
       filePromise: undefined as undefined | Promise<void>,
       filename: downloadPath(job.id, "audio"),
     },
     video: {
       total: 0,
       downloaded: 0,
-      streamPromise: downloader.videoStream(job.options),
+      streamPromise: downloader.videoStream(job.options.video ?? {}),
       filePromise: undefined as undefined | Promise<void>,
       filename: downloadPath(job.id, "video"),
     },

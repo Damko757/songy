@@ -7,7 +7,7 @@ interface DownloadJob {
   id: ObjectId; ///< MongoDB entry ID
   link: string; ///< Yt link or id
   type: "audio" | "video" | "video-only"; ///< Type of file to download
-  options: ytdl.downloadOptions; ///< Download options for ytdl
+  options: { audio?: ytdl.downloadOptions; video?: ytdl.downloadOptions }; ///< Download options for ytdl
 }
 
 /**
