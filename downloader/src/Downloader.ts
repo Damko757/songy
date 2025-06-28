@@ -36,18 +36,14 @@ export class Downloader {
    * @param extension Extension of file. Can be undefined, then no extension is added
    * @param extra Additional value, if temporary file is created (e. g. audio and video-only files, then merge)
    */
-  static downloadPath(
-    id: ObjectId | string,
-    extension?: DownloadJob["extension"],
-    extra?: string
-  ) {
+  static downloadPath(id: ObjectId | string, extra?: string) {
     if (!fs.existsSync(Downloader.downloadDirectory))
       fs.mkdirSync(Downloader.downloadDirectory);
 
     // TODO: Fix for special directory
     return path.resolve(
       Downloader.downloadDirectory,
-      `${id}${extra ? "_" + extra : ""}${extension ? "." + extension : ""}`
+      `${id}${extra ? "_" + extra : ""}`
     );
   }
 
@@ -172,15 +168,17 @@ export class Downloader {
    * @param videoFilename Filename of video file
    * @param audioFilename Filename of audio file
    * @param outFilename Filename of resulting video file
+   * @param format Format of output file (extension)
    * @returns Promise resolved upon completed combining
    */
   createCombinedVideoAudio(
     videoFilename: string,
     audioFilename: string,
-    outFilename: string
+    outFilename: string,
+    format: DownloadJob["extension"] = "mp4"
   ) {
     return new Promise<void>((resolve, reject) => {
-      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest ${outFilename} -y`;
+      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest -f ${format} ${outFilename} -y`;
 
       exec(cmd, (error, stdout, stderr) => {
         if (error) {

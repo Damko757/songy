@@ -123,14 +123,10 @@ describe("Downloading", () => {
                   await new Promise<void>((resolve) => {
                     setTimeout(() => {
                       expect(
-                        fs.existsSync(
-                          Downloader.downloadPath(id, "mp3", "audio")
-                        )
+                        fs.existsSync(Downloader.downloadPath(id, "audio"))
                       ).toBeFalsy();
                       expect(
-                        fs.existsSync(
-                          Downloader.downloadPath(id, "mp4", "video")
-                        )
+                        fs.existsSync(Downloader.downloadPath(id, "video"))
                       ).toBeFalsy();
                       resolve();
                     }, 1000);
@@ -138,14 +134,12 @@ describe("Downloading", () => {
 
                   // Real file kept
                   expect(() =>
-                    fs.accessSync(Downloader.downloadPath(id, "mp4"))
+                    fs.accessSync(Downloader.downloadPath(id))
                   ).not.toThrow();
 
                   // TODO fetch from correct directory
                   const hash = new sha256();
-                  hash.update(
-                    fs.readFileSync(Downloader.downloadPath(id, "mp4"))
-                  );
+                  hash.update(fs.readFileSync(Downloader.downloadPath(id)));
                   expect(hash).toMatchSnapshot();
 
                   resolve();

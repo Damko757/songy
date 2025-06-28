@@ -7,6 +7,11 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true
   },
-  "include": ["tests/**/*.ts", "src/**/*.ts", "../api/src/Helpers/*.ts"],
+  "include": [
+    "tests/**/*.ts",
+    "src/**/*.ts",
+    "../api/src/Helpers/*.ts",
+    "../shared/**/*.ts"
+  ],
   "exclude": ["node_modules"]
 }

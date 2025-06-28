@@ -30,7 +30,7 @@ describe("Audio only", () => {
         link //https://www.youtube.com/watch?v=
       );
       const file = DEBUG_SAVE
-        ? fs.createWriteStream(Downloader.downloadPath(`audio-${link}`, "mp3"))
+        ? fs.createWriteStream(Downloader.downloadPath(`audio-${link}`))
         : undefined;
       const hash = new sha256();
 
@@ -83,9 +83,7 @@ describe("Video only", () => {
         const hash = new sha256();
 
         const file = DEBUG_SAVE
-          ? fs.createWriteStream(
-              Downloader.downloadPath(`video-${res}p`, "mp4")
-            )
+          ? fs.createWriteStream(Downloader.downloadPath(`video-${res}p`))
           : undefined;
         videoStream.on("data", (chunk) => {
           file?.write(chunk); // Writing chunk (if needed)
@@ -123,11 +121,11 @@ describe("Combined", () => {
     );
 
     const videoFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync-VIDEO", "mp4")
+      ? Downloader.downloadPath("video-audio-sync-VIDEO")
       : tmp.fileSync().name;
     const videoFileStream = fs.createWriteStream(videoFileName);
     const audioFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync-AUDIO", "mp3")
+      ? Downloader.downloadPath("video-audio-sync-AUDIO")
       : tmp.fileSync().name;
     const audioFileStream = fs.createWriteStream(audioFileName);
 
@@ -171,14 +169,15 @@ describe("Combined", () => {
     );
 
     const outFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync", "mp4")
+      ? Downloader.downloadPath("video-audio-sync")
       : tmp.fileSync().name;
 
     // Combination
     await downloader.createCombinedVideoAudio(
       videoFileName,
       audioFileName,
-      outFileName
+      outFileName,
+      "mp4"
     );
   }, 30_000); // 30 s
 
@@ -204,7 +203,7 @@ describe("Combined", () => {
       );
 
       const outFile = DEBUG_SAVE
-        ? Downloader.downloadPath("blender-film", "mp4")
+        ? Downloader.downloadPath("blender-film")
         : tmp.fileSync().name;
       const hash = new sha256();
 
@@ -212,7 +211,8 @@ describe("Combined", () => {
         downloader.createCombinedVideoAudio(
           videoFileName,
           audioFileName,
-          outFile
+          outFile,
+          "mp4"
         )
       ).resolves.toBeUndefined();
 
