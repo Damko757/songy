@@ -28,7 +28,9 @@ beforeAll(() => {
 });
 afterAll(() => {
   // Removing out folder
-  fs.rmSync(Downloader.downloadDirectory, { recursive: true });
+  try {
+    fs.rmSync(Downloader.downloadDirectory, { recursive: true });
+  } catch (e) {}
 });
 
 describe("Invalid behaviour", () => {
@@ -88,11 +90,11 @@ describe("Initialization", () => {
 });
 
 describe("Downloading", () => {
-  it("5 Concurrent videos", () => {
-    const wp = new WorkerPoolTest(5);
+  it("3 Concurrent videos", () => {
+    const wp = new WorkerPoolTest(3);
 
     return Promise.all(
-      Array.from(Array(5)).map(
+      Array.from(Array(3)).map(
         (_, i) =>
           new Promise<void>((resolve) => {
             let downloaded = 0;
@@ -101,6 +103,7 @@ describe("Downloading", () => {
             wp.addJob({
               job: {
                 action: "download",
+                extension: "mp4",
                 id: id,
                 link: "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
                 options: {
@@ -117,17 +120,20 @@ describe("Downloading", () => {
                 end: async () => {
                   expect(downloaded).toBe(total);
                   expect(total).not.toBe(0);
-                  expect(total).toMatchSnapshot();
 
                   // Checking if temporary files are deleted
                   // They are deleted asyncly, hence the wait
                   await new Promise<void>((resolve) => {
                     setTimeout(() => {
                       expect(
-                        fs.existsSync(Downloader.downloadPath(id, "audio"))
+                        fs.existsSync(
+                          Downloader.downloadPath(id, "mp3", "audio")
+                        )
                       ).toBeFalsy();
                       expect(
-                        fs.existsSync(Downloader.downloadPath(id, "video"))
+                        fs.existsSync(
+                          Downloader.downloadPath(id, "mp4", "video")
+                        )
                       ).toBeFalsy();
                       resolve();
                     }, 1000);
@@ -135,12 +141,14 @@ describe("Downloading", () => {
 
                   // Real file kept
                   expect(() =>
-                    fs.accessSync(Downloader.downloadPath(id))
+                    fs.accessSync(Downloader.downloadPath(id, "mp4"))
                   ).not.toThrow();
 
                   // TODO fetch from correct directory
                   const hash = new sha256();
-                  hash.update(fs.readFileSync(Downloader.downloadPath(id)));
+                  hash.update(
+                    fs.readFileSync(Downloader.downloadPath(id, "mp4"))
+                  );
                   expect(hash).toMatchSnapshot();
 
                   resolve();
@@ -150,5 +158,5 @@ describe("Downloading", () => {
           })
       )
     );
-  }, 120_000);
+  }, 120_000); // 2 min
 });

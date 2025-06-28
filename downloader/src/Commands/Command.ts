@@ -3,8 +3,9 @@ import type { ObjectId } from "mongoose";
 import { DestroyT } from "../Workers/WorkerPool.js";
 
 /// Worker communication commands ///
-interface DownloadJob {
+export interface DownloadJob {
   id: ObjectId; ///< MongoDB entry ID
+  extension: "mp4" | "mp3"; ///< MongoDB entry ID
   link: string; ///< Yt link or id
   type: "audio" | "video" | "video-only"; ///< Type of file to download
   options: { audio?: ytdl.downloadOptions; video?: ytdl.downloadOptions }; ///< Download options for ytdl

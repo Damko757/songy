@@ -5,6 +5,7 @@ import ytdl, { type downloadOptions } from "@distube/ytdl-core";
 import { ObjectId } from "mongoose";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import { DownloadJob } from "./Commands/Command.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,16 +26,21 @@ export class Downloader {
   /**
    * Resolves download path
    * @param id Id of file to download
+   * @param extension Extension of file. Can be undefined, then no extension is added
    * @param extra Additional value, if temporary file is created (e. g. audio and video-only files, then merge)
    */
-  static downloadPath(id: ObjectId | string, extra?: string) {
+  static downloadPath(
+    id: ObjectId | string,
+    extension?: DownloadJob["extension"],
+    extra?: string
+  ) {
     if (!fs.existsSync(Downloader.downloadDirectory))
       fs.mkdirSync(Downloader.downloadDirectory);
 
     // TODO: Fix for special directory
     return path.resolve(
       Downloader.downloadDirectory,
-      `${id}${extra ? "_" + extra : ""}`
+      `${id}${extra ? "_" + extra : ""}${extension ? "." + extension : ""}`
     );
   }
 
@@ -167,7 +173,7 @@ export class Downloader {
     outFilename: string
   ) {
     return new Promise<void>((resolve, reject) => {
-      const cmd = `ffmpeg -f mp4 -i ${videoFilename} -f mp3 -i ${audioFilename} -c:v copy -c:a aac -shortest -f mp4 ${outFilename} -y`;
+      const cmd = `ffmpeg -i ${videoFilename} -i ${audioFilename} -c:v copy -c:a aac -shortest ${outFilename} -y`;
 
       exec(cmd, (error, stdout, stderr) => {
         if (error) {

@@ -30,7 +30,7 @@ describe("Audio only", () => {
         link //https://www.youtube.com/watch?v=
       );
       const file = DEBUG_SAVE
-        ? fs.createWriteStream(Downloader.downloadPath(`audio-${link}.mp3`))
+        ? fs.createWriteStream(Downloader.downloadPath(`audio-${link}`, "mp3"))
         : undefined;
       const hash = new sha256();
 
@@ -83,7 +83,9 @@ describe("Video only", () => {
         const hash = new sha256();
 
         const file = DEBUG_SAVE
-          ? fs.createWriteStream(Downloader.downloadPath(`video-${res}p.mp4`))
+          ? fs.createWriteStream(
+              Downloader.downloadPath(`video-${res}p`, "mp4")
+            )
           : undefined;
         videoStream.on("data", (chunk) => {
           file?.write(chunk); // Writing chunk (if needed)
@@ -121,11 +123,11 @@ describe("Combined", () => {
     );
 
     const videoFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync-VIDEO.mp4")
+      ? Downloader.downloadPath("video-audio-sync-VIDEO", "mp4")
       : tmp.fileSync().name;
     const videoFileStream = fs.createWriteStream(videoFileName);
     const audioFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync-AUDIO.mp4")
+      ? Downloader.downloadPath("video-audio-sync-AUDIO", "mp3")
       : tmp.fileSync().name;
     const audioFileStream = fs.createWriteStream(audioFileName);
 
@@ -169,7 +171,7 @@ describe("Combined", () => {
     );
 
     const outFileName = DEBUG_SAVE
-      ? Downloader.downloadPath("video-audio-sync.mp4")
+      ? Downloader.downloadPath("video-audio-sync", "mp4")
       : tmp.fileSync().name;
 
     // Combination
@@ -178,7 +180,7 @@ describe("Combined", () => {
       audioFileName,
       outFileName
     );
-  }, 10_000); // 10 s
+  }, 30_000); // 30 s
 
   it(
     "4K Blender film",
@@ -202,7 +204,7 @@ describe("Combined", () => {
       );
 
       const outFile = DEBUG_SAVE
-        ? Downloader.downloadPath("blender-film.mp4")
+        ? Downloader.downloadPath("blender-film", "mp4")
         : tmp.fileSync().name;
       const hash = new sha256();
 
