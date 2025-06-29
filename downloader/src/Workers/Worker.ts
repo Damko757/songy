@@ -36,7 +36,7 @@ async function downloadSingleStream(
   });
 
   downloader
-    .saveStream(stream, Downloader.downloadPath(job.id))
+    .saveStream(stream, Downloader.downloadPath(job._id))
     .then(() => {
       // Stream downloaded
       const message: WorkerMessage = {
@@ -76,14 +76,14 @@ async function download(
       downloaded: 0,
       streamPromise: downloader.audioStream(job.options.audio ?? {}),
       filePromise: undefined as undefined | Promise<string>,
-      filename: Downloader.downloadPath(job.id, "audio"),
+      filename: Downloader.downloadPath(job._id, "audio"),
     },
     video: {
       total: 0,
       downloaded: 0,
       streamPromise: downloader.videoStream(job.options.video ?? {}),
       filePromise: undefined as undefined | Promise<string>,
-      filename: Downloader.downloadPath(job.id, "video"),
+      filename: Downloader.downloadPath(job._id, "video"),
     },
   };
 
@@ -126,7 +126,7 @@ async function download(
       await downloader.createCombinedVideoAudio(
         streams.video.filename,
         streams.audio.filename,
-        Downloader.downloadPath(job.id)
+        Downloader.downloadPath(job._id)
       );
 
       // Removing oringal files

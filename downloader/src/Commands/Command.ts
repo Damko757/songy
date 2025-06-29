@@ -1,12 +1,12 @@
 import type ytdl from "@distube/ytdl-core";
 import type { ObjectId } from "mongoose";
 import { DestroyT } from "../Workers/WorkerPool.js";
-import { AudioMetadata } from "../../../shared/Entities/Metadata/Metadata.js";
+import { AudioMetadata } from "../../../shared/Entities/Metadata/AudioMetadata.js";
 import { MediaFileExtension } from "../../../api/src/Database/Schemas/MediaFile.js";
 
 /// Worker communication commands ///
 export interface DownloadJob {
-  id: ObjectId; ///< MongoDB entry ID
+  _id: ObjectId; ///< MongoDB entry ID
   extension: MediaFileExtension["video"] | MediaFileExtension["audio"]; ///< File saved to user with extension (to know file's encoding)
   link: string; ///< Yt link or id
   type: "audio" | "video" | "video-only"; ///< Type of file to download

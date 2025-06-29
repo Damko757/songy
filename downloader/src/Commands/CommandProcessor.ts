@@ -129,8 +129,8 @@ export class CommandProcessor {
         this.workerPool.addJob({
           job: { ...command, action: "download" },
           handlers: {
-            progress: (msg) => this.onDownloadProgress(command.id, msg), // Progression callback
-            end: (msg) => this.onDownloadEnd(command.id, msg), // Finished callaback
+            progress: (msg) => this.onDownloadProgress(command._id, msg), // Progression callback
+            end: (msg) => this.onDownloadEnd(command._id, msg), // Finished callaback
           },
         });
 

@@ -101,7 +101,7 @@ describe("Downloading", () => {
               job: {
                 action: "download",
                 extension: "mp4",
-                id: id,
+                _id: id,
                 link: "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
                 options: {
                   video: { quality: "lowestvideo" },
