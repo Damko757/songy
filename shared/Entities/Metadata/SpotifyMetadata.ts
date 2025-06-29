@@ -1,5 +1,5 @@
-import type { Metadata } from "./Metadata";
+import type { AudioMetadata } from "./AudioMetadata";
 
-export interface SpotifyMetadata extends Metadata {
+export interface SpotifyMetadata extends AudioMetadata {
   link: string;
 }

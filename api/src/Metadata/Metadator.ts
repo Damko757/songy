@@ -3,11 +3,11 @@ import { YTMusicMetadataBuilder } from "./YTMusicMetadataBuilder";
 import { SpotifyMetadataBuilder } from "./SpotifyMetadataBuilder";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
 import type { YTMusicMetadata } from "../../../shared/Entities/Metadata/YTMusicMetadata";
-import type { Metadata } from "../../../shared/Entities/Metadata/Metadata";
 import type { FfmpegCommand } from "fluent-ffmpeg";
 import { ENV } from "../env";
 import type { MetadataResponse, MetadatorResponse } from "./MetadataResponse";
 import ytdl from "@distube/ytdl-core";
+import { AudioMetadata } from "../../../shared/Entities/Metadata/AudioMetadata";
 
 /**
  * His role is to extract and find metadata
@@ -51,7 +51,7 @@ export class Metadator {
       raw: raw,
     };
 
-    const promises: Promise<Metadata>[] = [];
+    const promises: Promise<AudioMetadata>[] = [];
 
     await Promise.all(
       Object.keys(Metadatas).map(
@@ -83,7 +83,7 @@ export class Metadator {
    */
   static putMetadataToFFMPEG(
     ffmpeg: FfmpegCommand,
-    metadata: Partial<Metadata>
+    metadata: Partial<AudioMetadata>
   ) {
     const availableMetas = [
       [metadata.album, "album"],

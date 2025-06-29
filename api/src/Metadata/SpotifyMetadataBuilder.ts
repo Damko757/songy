@@ -4,10 +4,10 @@ import { Spotify } from "../Spotify/Spotify";
 import { ENV } from "../env";
 import { MissingSpotifyCrendentials } from "../Spotify/SpotifyError";
 import type { SpotifyMetadata } from "../../../shared/Entities/Metadata/SpotifyMetadata";
-import type { YTDL_VideoInfo } from "@ybd-project/ytdl-core";
+import ytdl from "@distube/ytdl-core";
 
 export class SpotifyMetadataBuilder extends MetadataBuilder {
-  static async create(raw: YTDL_VideoInfo): Promise<SpotifyMetadata[] | null> {
+  static async create(raw: ytdl.videoInfo): Promise<SpotifyMetadata[] | null> {
     if (!ENV.ENABLE_SPOTIFY) return null;
 
     try {
@@ -22,7 +22,6 @@ export class SpotifyMetadataBuilder extends MetadataBuilder {
             album: spotifyItem.album.name,
             thumbnails: spotifyItem.album.images,
             releaseDate: spotifyItem.album.release_date,
-            duration: spotifyItem.duration_ms,
           };
           return meta;
         }) ?? null
