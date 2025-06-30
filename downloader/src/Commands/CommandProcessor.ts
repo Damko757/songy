@@ -23,9 +23,10 @@ export class CommandProcessor {
   protected wss: WebSocketServer; ///< WebSocketServer
   protected workerPool?: WorkerPool; ///< Pool of workers doing the actual hard work
 
+  // Saving ID as key and in value save processing time when sending to client (no need to map)
   protected downloadStatuses = new Map<
     ObjectId,
-    { downloaded: number; total: number }
+    { id: ObjectId; downloaded: number; total: number }
   >();
 
   protected mongoose!: typeof mongoose; ///< DB connection handle
@@ -159,9 +160,7 @@ export class CommandProcessor {
     id: ObjectId,
     message: Extract<WorkerMessage, { type: "start" }>
   ) {
-    MediaFileModel.findByIdAndUpdate(id, { state: MediaFileState.DOWNLOADING });
-
-    // TODO notify clients
+    this.updateMediaFilesState(id, MediaFileState.DOWNLOADING);
   }
 
   /**
@@ -174,15 +173,23 @@ export class CommandProcessor {
     message: Extract<WorkerMessage, { type: "progress" }>
   ) {
     this.downloadStatuses.set(id, {
+      id: id,
       downloaded: message.downloaded,
       total: message.total,
     });
 
-    if (message.downloaded >= message.total)
-      MediaFileModel.findByIdAndUpdate(id, {
-        state: MediaFileState.PROCESSING,
-      });
-    // TODO notify clients
+    if (message.downloaded >= message.total) {
+      this.updateMediaFilesState(id, MediaFileState.PROCESSING);
+    }
+
+    // TODO ~~notify clients~~ Clients are notified periodically?
+    // WIll try every 1 sec and every request
+
+    // EveryRequest
+    this.sendResponse(this.wss.clients, {
+      type: DownloaderCommandResponseType.PROGRESS,
+      progresses: [...this.downloadStatuses.values()],
+    });
   }
 
   /**
@@ -197,8 +204,23 @@ export class CommandProcessor {
   ) {
     this.downloadStatuses.delete(id); // Removing status from tracking (if tracked`)
 
-    MediaFileModel.findByIdAndUpdate(id, { state: MediaFileState.READY });
-    // TODO
+    this.updateMediaFilesState(id, MediaFileState.READY);
+  }
+
+  /**
+   * Updates entry in MediaFileModel and notifies clients about the change
+   * @param id Object's unique ID
+   * @param newState State to update to
+   */
+  protected updateMediaFilesState(id: ObjectId, newState: MediaFileState) {
+    // Marking in MongoDB
+    MediaFileModel.findByIdAndUpdate(id, { state: newState });
+    // Notifying clients
+    this.sendResponse(this.wss.clients, {
+      type: DownloaderCommandResponseType.STATE_CHANGE,
+      id: id,
+      newState: newState,
+    });
   }
 
   /**

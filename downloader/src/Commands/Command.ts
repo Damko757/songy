@@ -2,7 +2,10 @@ import type ytdl from "@distube/ytdl-core";
 import type { ObjectId } from "mongoose";
 import { DestroyT } from "../Workers/WorkerPool.js";
 import { AudioMetadata } from "../../../shared/Entities/Metadata/AudioMetadata.js";
-import { MediaFileExtension } from "../../../api/src/Database/Schemas/MediaFile.js";
+import {
+  MediaFileExtension,
+  MediaFileState,
+} from "../../../api/src/Database/Schemas/MediaFile.js";
 
 /// Worker communication commands ///
 export interface DownloadJob {
@@ -88,6 +91,9 @@ export enum DownloaderCommandResponseType {
   ERROR = "DOWNLOADER_ERROR", ///< Error happened
   EXIT = "DOWNLOADER_EXIT", ///< Worker pool destroyed
   START = "DOWNLOADER_START", ///< Worker pool successfully started
+  PROGRESS = "MEDIAFILES_PROGRESS", ///< Array of progresses
+  STATE_CHANGE = "MEDIAFILE_STATE_CHANGE", ///< MediFile's state has changed
+  REFETCH = "MEDIAFILE_REFETCH", ///< MediFile's data has changed, ask MongoDB
 }
 
 /**
@@ -99,4 +105,17 @@ export type DownloaderCommandResponse =
       error: string | object;
     }
   | { type: DownloaderCommandResponseType.EXIT }
-  | { type: DownloaderCommandResponseType.START; numberOfWorkers: number };
+  | { type: DownloaderCommandResponseType.START; numberOfWorkers: number }
+  | {
+      type: DownloaderCommandResponseType.PROGRESS;
+      progresses: { id: ObjectId; downloaded: number; total: number }[]; ///< Array of updated download progression. Used only with state DOWNLOADING
+    }
+  | {
+      type: DownloaderCommandResponseType.STATE_CHANGE;
+      id: ObjectId; ///< Id of Mediafile, whose state changed to `newState`
+      newState: MediaFileState; ///< New id's state (Saved awaited mongoDB call)
+    }
+  | {
+      type: DownloaderCommandResponseType.REFETCH;
+      id: ObjectId; ///< Id of MediaFile to refetch
+    };

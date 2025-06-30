@@ -14,12 +14,13 @@
 # API
 
 1. [x] Use ENV port for WS
-2. [ ] Create client download API
+2. [ ] Create client simple download API to test client input
 3. [ ] Create client WSS for downloading status
+4. [ ] Create client advanced download API with download options (e. g. formats, video/audio)
 
 # MongoDB
 
-1. [ ] Create song Schema
+1. [x] Create song Schema
 
 # Docker
 
@@ -27,6 +28,7 @@
 2. [ ] Dockerize API
 3. [ ] Dockerize Web
 
-# Trimmer
+# Distant future
 
-1. [ ] Create trimmer
+1. [ ] Add reencoding option (e. g. mp4 -> avi)
+2. [ ] Create trimmer
