@@ -1,7 +1,12 @@
+# All preffixed with undersoce (_temp)
+_*
+!__snapshots__
+
 # Bun cache
 **/bun.lock*
 package-lock.json
 .env
-_*
-!__snapshots__
+
+# Development files
 out
+mongodb/db
