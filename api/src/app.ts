@@ -5,10 +5,10 @@ import express, {
 } from "express";
 import bodyParser from "body-parser";
 import helmet from "helmet";
-import { Router } from "./Utils/Router.ts";
-import { routableControllers } from "./Utils/RoutableControllers.ts";
-import { errorHandler, type ErrorResponse } from "./Utils/ErrorHandler.ts";
 import { HttpStatusCode } from "axios";
+import { routableControllers } from "./Utils/RoutableControllers.js";
+import { errorHandler, ErrorResponse } from "./Utils/ErrorHandler.js";
+import { Router } from "./Utils/Router.js";
 
 export const initApp = () => {
   const app = express();
