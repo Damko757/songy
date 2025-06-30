@@ -46,6 +46,7 @@ export type WorkerMessage =
       downloaded: number;
       total: number;
     }
+  | { type: "start" } ///< Started executing job
   | {
       type: "end"; ///< Finished job. Can go idle
     }

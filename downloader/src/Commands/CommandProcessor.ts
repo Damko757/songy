@@ -8,8 +8,13 @@ import {
   WorkerMessage,
 } from "./Command.js";
 import { WorkerPool } from "../Workers/WorkerPool.js";
-import { ObjectId } from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import chalk from "chalk";
+import { connectMongoose } from "../Database/MongoDB.js";
+import {
+  MediaFileModel,
+  MediaFileState,
+} from "../../../api/src/Database/Schemas/MediaFile.js";
 
 /**
  * Listens to commands and dispatches events (WorkerPool download progress, finished) to clients
@@ -23,12 +28,18 @@ export class CommandProcessor {
     { downloaded: number; total: number }
   >();
 
+  protected mongoose!: typeof mongoose; ///< DB connection handle
+
   constructor() {
     this.wss = new WebSocketServer({
       port: Number(process.env.DOWNLOADER_WS_PORT),
     });
-    this.bindWSS();
-    // this._print();
+
+    // Creating DB connection
+    connectMongoose().then((mongoose) => {
+      this.mongoose = mongoose;
+      this.bindWSS();
+    });
   }
 
   /**
@@ -129,6 +140,7 @@ export class CommandProcessor {
         this.workerPool.addJob({
           job: { ...command, action: "download" },
           handlers: {
+            start: (msg) => this.onDownloadStart(command._id, msg), // Start singal
             progress: (msg) => this.onDownloadProgress(command._id, msg), // Progression callback
             end: (msg) => this.onDownloadEnd(command._id, msg), // Finished callaback
           },
@@ -136,6 +148,20 @@ export class CommandProcessor {
 
         return; // Ok
     }
+  }
+
+  /**
+   * Updates entry in db that the file is in `DOWNLOADING` state
+   * @param id Of media file that started downloading
+   * @param message Start message
+   */
+  protected onDownloadStart(
+    id: ObjectId,
+    message: Extract<WorkerMessage, { type: "start" }>
+  ) {
+    MediaFileModel.findByIdAndUpdate(id, { state: MediaFileState.DOWNLOADING });
+
+    // TODO notify clients
   }
 
   /**
@@ -152,7 +178,11 @@ export class CommandProcessor {
       total: message.total,
     });
 
-    // TODO
+    if (message.downloaded >= message.total)
+      MediaFileModel.findByIdAndUpdate(id, {
+        state: MediaFileState.PROCESSING,
+      });
+    // TODO notify clients
   }
 
   /**
@@ -166,6 +196,8 @@ export class CommandProcessor {
     message: Extract<WorkerMessage, { type: "end" }>
   ) {
     this.downloadStatuses.delete(id); // Removing status from tracking (if tracked`)
+
+    MediaFileModel.findByIdAndUpdate(id, { state: MediaFileState.READY });
     // TODO
   }
 
@@ -206,5 +238,13 @@ export class CommandProcessor {
           .catch(reject);
       });
     }
+  }
+
+  /**
+   * Destroys WSS and MongoDB connections
+   */
+  destroy() {
+    this.wss.close();
+    this.mongoose.disconnect();
   }
 }

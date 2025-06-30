@@ -151,6 +151,7 @@ async function download(
 
 parentPort?.on("message", (job: WorkerJobInstruction) => {
   console.log("My job:", job);
+  parentPort?.postMessage({ type: "start" });
   switch (job.action) {
     case "ping":
       // Answer to ping
