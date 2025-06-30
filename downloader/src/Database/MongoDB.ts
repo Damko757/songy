@@ -1,12 +1,9 @@
 import mongoose, { Mongoose } from "mongoose";
 import chalk from "chalk";
-import { ENV } from "../env";
+import { ENV } from "../env.js";
 
 /**
- * Connects to docker mongoDB instance
- * @param options Connection options
- * @param quiet If should print "connection successfull" message
- * @returns Promise resolved with current istance
+ * @see /api/Database/MongoDB.ts
  */
 export const connectMongoose = async (
   options: { quiet?: boolean } = {

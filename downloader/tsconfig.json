@@ -11,7 +11,6 @@
     "tests/**/*.ts",
     "src/**/*.ts",
     "../api/src/Helpers/*.ts",
-    "../api/src/Database/**/*.ts",
     "../shared/**/*.ts"
   ],
   "exclude": ["node_modules"]
