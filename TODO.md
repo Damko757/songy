@@ -16,7 +16,8 @@
 1. [x] Use ENV port for WS
 2. [ ] Create client simple download API to test client input
 3. [ ] Create client WSS for downloading status
-4. [ ] Create client advanced download API with download options (e. g. formats, video/audio)
+4. [ ] Create healthcheck between Downloader and API
+5. [ ] Create client advanced download API with download options (e. g. formats, video/audio)
 
 # MongoDB
 
