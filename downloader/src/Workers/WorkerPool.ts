@@ -150,7 +150,7 @@ export class WorkerPool {
    * @see WorkerPool.DestroyType
    * @returns Promise resolved when all workers are killed
    */
-  destroy(destroyType: Exclude<DestroyT, "none">) {
+  destroy(destroyType: DestroyT) {
     return new Promise<void>((resolve, reject) => {
       this.destroyType = destroyType;
       this.onDestroyCallback = () => {
@@ -158,7 +158,11 @@ export class WorkerPool {
         resolve();
       };
 
-      if (destroyType == "force") {
+      if (destroyType == "none") {
+        // Nothing happens
+        this.onDestroyCallback();
+        return;
+      } else if (destroyType == "force") {
         // Immidiate worker termination
         Promise.all(this.workers.map((worker) => worker.terminate()))
           .then(() => this.onDestroyCallback?.())

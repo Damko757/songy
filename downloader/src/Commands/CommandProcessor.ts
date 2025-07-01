@@ -116,7 +116,7 @@ export class CommandProcessor {
       case DownloaderCommandType.EXIT:
         // Exiting and notifying API
         this.workerPool
-          ?.destroy(command.force ?? "finish-all")
+          ?.destroy(command.destroy ?? "finish-all")
           .then(() => {
             this.sendResponse(ws, { type: DownloaderCommandResponseType.EXIT });
           })

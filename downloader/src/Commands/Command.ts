@@ -78,7 +78,7 @@ export type DownloaderCommand =
     }
   | {
       action: DownloaderCommandType.EXIT;
-      force?: Exclude<DestroyT, "none">;
+      destroy?: DestroyT;
     }
   | ({
       action: DownloaderCommandType.DOWNLOAD;
