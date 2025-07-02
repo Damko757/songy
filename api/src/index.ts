@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import { initApp } from "./app.ts";
-import { connectMongoose } from "./Database/MongoDB.ts";
+import { connectMongoose, destroyMongoose } from "./Database/MongoDB.ts";
 import { ENV } from "./env.ts";
+import { MediaFileModel } from "./Database/Schemas/MediaFile.ts";
 
 console.log(chalk.blueBright(`Welcome! ${new Date()}`));
 
@@ -18,4 +19,5 @@ Promise.all([connectMongoose({ quiet: false }), initApp()])
   })
   .catch((err) => {
     console.error(err);
+    destroyMongoose();
   });

@@ -4,23 +4,21 @@ import { DestroyT } from "../../../downloader/src/Workers/WorkerPool";
 import {
   DownloaderCommand,
   DownloaderCommandResponse,
+  DownloaderCommandResponseType,
   DownloaderCommandType,
 } from "../../../downloader/src/Commands/Command";
 import chalk from "chalk";
-import { EventEmitter } from "stream";
+import { destroyMongoose } from "../Database/MongoDB";
 
 /**
  * @class For working with Downloader module /container/
  */
-export class DownloaderClient extends EventEmitter {
+export abstract class DownloaderClient {
   ws?: WebSocket;
 
-  static async init() {
-    const instance = new this();
-    await instance.bindWS();
-
-    return instance;
-  }
+  protected abstract processMessageFromDownloader(
+    message: DownloaderCommandResponse
+  ): void;
 
   /**
    * Creates connection to downloader
@@ -49,8 +47,10 @@ export class DownloaderClient extends EventEmitter {
           console.log(chalk.cyan("Connection to downloader has been opened!"));
           resolve(true);
         })
-        .on("message", (message: string) =>
-          this.processMessage(JSON.parse(message))
+        .on(
+          "message",
+          (message: string) =>
+            this.processMessageFromDownloader(JSON.parse(message)) // Processing left to client
         );
     });
   }
@@ -59,19 +59,11 @@ export class DownloaderClient extends EventEmitter {
    * Encodes and sends message to Command Processor
    * @param message Message for `CommandProcessor`
    */
-  sendMessage(message: DownloaderCommand) {
+  sendMessageToDownloader(message: DownloaderCommand) {
     if (!this.ws)
-      throw new Error("Unitialized WebSocket. Please call `bindWSS()`");
+      throw new Error("Unitialized WebSocket. Please call `bindWS()`");
 
     this.ws.send(JSON.stringify(message));
-  }
-
-  /**
-   * Processes message from Command Processor
-   * @param message Response
-   */
-  processMessage(message: DownloaderCommandResponse) {
-    // TODO
   }
 
   /**
@@ -79,10 +71,13 @@ export class DownloaderClient extends EventEmitter {
    * @param destroyDownloader
    */
   destroy(destroyDownloader: DestroyT = "finish-all") {
-    this.sendMessage({
+    // Turning off Downloader Command Processor
+    this.sendMessageToDownloader({
       action: DownloaderCommandType.EXIT,
       destroy: destroyDownloader,
     });
+
+    // Closing Ws
     this.ws?.close();
   }
 }
