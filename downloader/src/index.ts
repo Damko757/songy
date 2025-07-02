@@ -10,17 +10,12 @@ import {
 import dotenv from "dotenv";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
+import { connectMongoose } from "./Database/MongoDB.js";
+import { ENV } from "./env.js";
 
 const commandProcessor = new CommandProcessor();
 
-const client = new WebSocket(
-  "ws://127.0.0.1:" + process.env.DOWNLOADER_WS_PORT
-);
+const client = new WebSocket("ws://127.0.0.1:" + ENV.DOWNLOADER_WS_PORT);
 client.on("error", console.error);
 
 client.on("message", async (message: string) => {
@@ -54,5 +49,7 @@ client.on("open", () => {
     action: DownloaderCommandType.START,
     numberOfWorkers: 5,
   };
-  client.send(JSON.stringify(startCommand));
+  // client.send(JSON.stringify(startCommand));
 });
+
+const mongooseInstance = connectMongoose({ quiet: false });
