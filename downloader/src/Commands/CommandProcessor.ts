@@ -10,7 +10,6 @@ import {
 import { WorkerPool } from "../Workers/WorkerPool.js";
 import mongoose, { ObjectId } from "mongoose";
 import chalk from "chalk";
-import { connectMongoose } from "../Database/MongoDB.js";
 import {
   MediaFileModel,
   MediaFileState,
@@ -29,18 +28,12 @@ export class CommandProcessor {
     { id: ObjectId; downloaded: number; total: number }
   >();
 
-  protected mongoose!: typeof mongoose; ///< DB connection handle
-
   constructor() {
     this.wss = new WebSocketServer({
       port: Number(process.env.DOWNLOADER_WS_PORT),
     });
 
-    // Creating DB connection
-    connectMongoose().then((mongoose) => {
-      this.mongoose = mongoose;
-      this.bindWSS();
-    });
+    this.bindWSS();
   }
 
   /**
@@ -267,6 +260,5 @@ export class CommandProcessor {
    */
   destroy() {
     this.wss.close();
-    this.mongoose.disconnect();
   }
 }

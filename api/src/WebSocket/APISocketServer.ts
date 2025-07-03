@@ -13,11 +13,9 @@ import {
 } from "../../../shared/WebSocketCommunicationProtocol";
 import { DestroyT } from "../../../downloader/src/Workers/WorkerPool";
 import { MediaFileModel } from "../Database/Schemas/MediaFile";
-import { connectMongoose, destroyMongoose } from "../Database/MongoDB";
 
 export class APISocketServer extends DownloaderClient {
   wss?: WebSocketServer;
-  isMongoActive = false; // If active connection to DB
 
   /**
    * Callback for downloader-to-API message
@@ -96,17 +94,6 @@ export class APISocketServer extends DownloaderClient {
    */
   bindWSS() {
     return new Promise<boolean>((resolve, reject) => {
-      if (!this.isMongoActive) {
-        // Connecting to mongo
-        try {
-          connectMongoose();
-          this.isMongoActive = true;
-        } catch (e) {
-          reject(e);
-          return;
-        }
-      }
-
       super.bindWS().then((newStart) => {
         if (this.wss) resolve(false);
 
@@ -145,9 +132,5 @@ export class APISocketServer extends DownloaderClient {
   destroy(): void {
     super.destroy("finish-all");
     this.wss?.close();
-
-    // Disconnecting from Mongo
-    if (this.isMongoActive) destroyMongoose();
-    this.isMongoActive = false;
   }
 }
