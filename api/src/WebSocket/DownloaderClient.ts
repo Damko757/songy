@@ -24,12 +24,12 @@ export abstract class DownloaderClient {
    * Creates connection to downloader
    * @returns
    */
-  async bindWS(): Promise<boolean> {
+  protected async bindWS(): Promise<boolean> {
     return new Promise((resolve, reject) => {
       if (this.ws !== undefined) return resolve(false);
 
       this.ws = new WebSocket(
-        `ws://${ENV.DOCKER ? "downloader" : "localhost"}:${
+        `ws://${ENV.DOCKER == "1" ? "downloader" : "localhost"}:${
           ENV.DOWNLOADER_WS_PORT
         }`
       );
