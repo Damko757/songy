@@ -9,6 +9,8 @@ import { HttpStatusCode } from "axios";
 import { routableControllers } from "./Utils/RoutableControllers.js";
 import { errorHandler, ErrorResponse } from "./Utils/ErrorHandler.js";
 import { Router } from "./Utils/Router.js";
+import { ENV } from "./env.js";
+import chalk from "chalk";
 
 export const initApp = () => {
   const app = express();
