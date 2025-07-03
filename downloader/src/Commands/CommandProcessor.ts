@@ -81,6 +81,12 @@ export class CommandProcessor {
         const command = JSON.parse(data) as DownloaderCommand;
         this.processCommand(ws, command); // Processing commands from API (client)
       });
+
+      // Notyfing about current number of workers
+      this.sendResponse(ws, {
+        type: DownloaderCommandResponseType.START,
+        numberOfWorkers: this.workerPool?.size ?? 0,
+      });
     });
   }
 
@@ -111,6 +117,7 @@ export class CommandProcessor {
         this.workerPool
           ?.destroy(command.destroy ?? "finish-all")
           .then(() => {
+            this.workerPool = undefined;
             this.sendResponse(ws, { type: DownloaderCommandResponseType.EXIT });
           })
           .catch((e) =>
@@ -223,33 +230,43 @@ export class CommandProcessor {
    * @returns Promise resolve upon write off of the data
    */
   protected sendResponse(
+    ws: WebSocket,
+    message: DownloaderCommandResponse | string
+  ): Promise<boolean>;
+  protected sendResponse(
+    ws: Iterable<WebSocket>,
+    message: DownloaderCommandResponse
+  ): Promise<boolean[]>;
+  protected sendResponse(
     ws: WebSocket | Iterable<WebSocket>,
     message: DownloaderCommandResponse | string
-  ) {
+  ): Promise<boolean> | Promise<boolean[]> {
     // Converting to string if object
     const data = typeof message == "string" ? message : JSON.stringify(message);
 
     // Sending to single client
     if (ws instanceof WebSocket) {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<boolean>((resolve, reject) => {
+        if (ws.readyState != WebSocket.OPEN) resolve(false);
+
         ws.send(data, (err) => {
-          if (!err) resolve();
+          if (!err) resolve(true);
           else reject(err);
         });
       });
     }
     // Sending to all clients
     else {
-      return new Promise<void>((resolve, reject) => {
-        const promises: Promise<void>[] = [];
+      return new Promise<boolean[]>((resolve, reject) => {
+        const promises: Promise<boolean>[] = [];
         // Send to each client
-        for (const client of ws) {
+        for (const client of ws as Iterable<WebSocket>) {
           promises.push(this.sendResponse(client, data));
         }
 
         // Resolve upon all written off
         Promise.all(promises)
-          .then(() => resolve())
+          .then((results) => resolve(results))
           .catch(reject);
       });
     }
