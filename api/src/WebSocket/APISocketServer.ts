@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import {
   DownloaderCommandResponse,
   DownloaderCommandResponseType,
+  DownloaderCommandType,
 } from "../../../downloader/src/Commands/Command";
 import { ENV } from "../env";
 import { DownloaderClient } from "./DownloaderClient";
@@ -16,6 +17,7 @@ import { MediaFileModel } from "../Database/Schemas/MediaFile";
 
 export class APISocketServer extends DownloaderClient {
   wss?: WebSocketServer;
+  numberOfWorkers: number;
 
   /**
    * Callback for downloader-to-API message
@@ -27,17 +29,32 @@ export class APISocketServer extends DownloaderClient {
     switch (message.type) {
       case DownloaderCommandResponseType.ERROR:
         return console.error(message.error);
+      case DownloaderCommandResponseType.START:
+        if (message.numberOfWorkers == 0)
+          // Starting downloader if not started
+          this.sendMessageToDownloader({
+            action: DownloaderCommandType.START,
+            numberOfWorkers: this.numberOfWorkers,
+          });
+        break;
+      case DownloaderCommandResponseType.EXIT: // Restarting workers
+        console.log(chalk.bgYellow("Restarting workers!"));
+        return this.sendMessageToDownloader({
+          action: DownloaderCommandType.START,
+          numberOfWorkers: this.numberOfWorkers,
+        });
+
       case DownloaderCommandResponseType.PROGRESS: // Progress update
         return this.sendToClients(this.wss?.clients, {
           type: ServerMessageType.PROGRESS,
           progresses: message.progresses,
-        });
+        }) as void;
       case DownloaderCommandResponseType.STATE_CHANGE: // This is has new state
         return this.sendToClients(this.wss?.clients, {
           type: ServerMessageType.STATE_CHANGE,
           id: message.id,
           newState: message.newState,
-        });
+        }) as void;
       case DownloaderCommandResponseType.REFETCH: // This is the newest data for this data
         MediaFileModel.findById(message.id).then((dato) => {
           if (dato != null)
@@ -64,28 +81,48 @@ export class APISocketServer extends DownloaderClient {
    * Sends `message` to single or multiple specief `clients`
    * @param clientOrClients Single or multiple WebSockets to send message to
    * @param message Message for clients
+   * @returns Promise resolved if `message` has been sent to client(s)
    */
   protected sendToClients(
     clientOrClients: WebSocket | Iterable<WebSocket> | undefined,
     message: ServerMessage
   ) {
-    if (!clientOrClients) return; // No payload
+    if (!clientOrClients) return; // No one to send
 
     const jsonMessage =
       typeof message == "string" ? message : JSON.stringify(message); // Not encoding already encoded
     if (clientOrClients instanceof WebSocket) {
-      clientOrClients.send(jsonMessage);
-      return;
+      return new Promise<boolean>((resolve, reject) => {
+        if (clientOrClients.readyState != WebSocket.OPEN) return resolve(false); // Client not opened
+
+        clientOrClients.send(jsonMessage, (err) => {
+          if (!err) resolve(true);
+          else reject(err);
+        });
+      });
     }
 
     // Iterable type - sending to group of clients
+    const promises: Promise<boolean>[] = [];
     for (const ws of clientOrClients) {
-      ws.send(jsonMessage);
+      promises.push(
+        new Promise((resolve, reject) => {
+          if (ws.readyState != WebSocket.OPEN) return resolve(false);
+
+          ws.send(jsonMessage, (err) => {
+            if (!err) resolve(true);
+            else reject(err);
+          });
+        })
+      );
     }
+
+    return Promise.all(promises);
   }
 
-  constructor() {
+  constructor(numberOfWorkers: number) {
     super();
+    this.numberOfWorkers = numberOfWorkers;
   }
 
   /**
