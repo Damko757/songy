@@ -18,7 +18,8 @@ export const connectMongoose = async (
   return new Promise<number>((resolve, rejected) => {
     // Mongo Running, no need to connect
 
-    const connectString = `mongodb://${ENV.MONGODB_DATABASE_USER}:${ENV.MONGODB_DATABASE_PASSWORD}@${ENV.MONGODB_DATABASE_URI}:${ENV.MONGODB_DATABASE_PORT}`;
+    // const connectString = `mongodb://${ENV.MONGODB_DATABASE_USER}:${ENV.MONGODB_DATABASE_PASSWORD}@${ENV.MONGODB_DATABASE_URI}:${ENV.MONGODB_DATABASE_PORT}`;
+    const connectString = `mongodb://${ENV.MONGODB_DATABASE_URI}:${ENV.MONGODB_DATABASE_PORT}`;
 
     mongoose
       .set("strictQuery", false)
