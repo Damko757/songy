@@ -1,15 +1,19 @@
-import { WebSocketServer, WebSocket } from "ws";
-import {
-  DownloaderCommandResponse,
-  DownloaderCommandResponseType,
-  DownloaderCommandType,
-} from "../../../downloader/src/Commands/Command";
-import { ENV } from "../env";
-import { DownloaderClient } from "./DownloaderClient";
-import chalk from "chalk";
+import { WebSocketServer, WebSocket, ServerOptions } from "ws";
 
+/**
+ * Ping message with payload.
+ * Ping - request
+ * Pong - reponse
+ */
 export type PingMessage = { ping: "ping" | "pong"; value?: any };
 
+/**
+ * WebSocketServer with client healthchecking capabilites
+ * @see PingableWebSocketClient
+ * @template ServerMessageT Message type send from server to client(s)
+ * @template ClientMessageT Message type send from client(s) to server
+ * @template WebSocketT WebSocket client type with potentially extra attributes (@see initializeWS)
+ */
 export abstract class PingingWebSocketServer<
   ServerMessageT,
   ClientMessageT,
@@ -20,6 +24,7 @@ export abstract class PingingWebSocketServer<
 
   protected healthcheckTimeout?: NodeJS.Timeout; ///< Reference to timeout scheduling healthchecking
   protected static HEATLHCHECK_INTERVAL: number = 30_000; // every 30 s checks health
+  serverOptions: ServerOptions;
 
   /**
    * Periodically sends ping
@@ -55,22 +60,25 @@ export abstract class PingingWebSocketServer<
    * @param data Raw payload from message
    * @returns Parsing status
    */
-  protected preprocessMessageFromClient(ws: WebSocketT, data: string) {
+  protected async preprocessMessageFromClient(
+    ws: WebSocketT,
+    data: string
+  ): Promise<boolean> {
     try {
-      const command = JSON.parse(data) as ClientMessageT | PingMessage;
-      if ((command as PingMessage).ping == "ping") {
+      const payload = JSON.parse(data) as ClientMessageT | PingMessage;
+      if ((payload as PingMessage).ping == "ping") {
         return this.sendMessageToClients(ws, {
           // Answering
           ping: "pong",
-          value: (command as PingMessage).value,
+          value: (payload as PingMessage).value,
         });
-      } else if ((command as PingMessage).ping == "pong") {
+      } else if ((payload as PingMessage).ping == "pong") {
         ws.isAlive = true;
-        this.onPong(ws, "message", (command as PingMessage).value); // Calling user callback
-        return;
+        this.onPong(ws, "message", (payload as PingMessage).value); // Calling user callback
+        return false;
       }
 
-      return this.processMessageFromClient(ws, command as ClientMessageT); // Processing by child
+      return this.processMessageFromClient(ws, payload as ClientMessageT); // Processing by child
     } catch (e) {
       // Unsuccessful parsing
       console.error(e);
@@ -86,7 +94,7 @@ export abstract class PingingWebSocketServer<
   abstract processMessageFromClient(
     ws: WebSocketT,
     message: ClientMessageT
-  ): boolean;
+  ): boolean | Promise<boolean>;
 
   /**
    * Sends `message` to single or multiple specified `clients`
@@ -95,10 +103,18 @@ export abstract class PingingWebSocketServer<
    * @returns Promise resolved with true if `message` has been sent to client(s)
    */
   sendMessageToClients(
+    clientOrClients: WebSocketT | undefined,
+    message: ServerMessageT | PingMessage
+  ): Promise<boolean>;
+  sendMessageToClients(
+    clientOrClients: Iterable<WebSocketT> | undefined,
+    message: ServerMessageT | PingMessage
+  ): Promise<boolean[]>;
+  async sendMessageToClients(
     clientOrClients: WebSocketT | Iterable<WebSocketT> | undefined,
     message: ServerMessageT | PingMessage
-  ) {
-    if (!clientOrClients) return; // No one to send
+  ): Promise<boolean | boolean[]> {
+    if (!clientOrClients) return false; // No one to send
 
     const jsonMessage =
       typeof message == "string" ? message : JSON.stringify(message); // Not encoding already encoded
@@ -135,8 +151,9 @@ export abstract class PingingWebSocketServer<
    *
    * @param usePingAsMessage Web client should set to true, Browsers *do not* support `onping` event
    */
-  constructor(usePingAsMessage: boolean) {
+  constructor(usePingAsMessage: boolean, serverOptions: ServerOptions) {
     this.usePingAsMessage = usePingAsMessage;
+    this.serverOptions = serverOptions;
   }
 
   /**
@@ -147,7 +164,7 @@ export abstract class PingingWebSocketServer<
     return new Promise<boolean>((resolve, reject) => {
       if (this.wss) resolve(false); // already running
 
-      this.wss = new WebSocketServer({ port: Number(ENV.API_WS_PORT) });
+      this.wss = new WebSocketServer(this.serverOptions);
       this.wss.on("error", (e) => this.onError(e));
       this.wss.on("error", reject);
       this.wss.on("listening", () => {
@@ -163,7 +180,7 @@ export abstract class PingingWebSocketServer<
         this.initializeWS(ws);
 
         ws.on("message", (data: string) => {
-          this.preprocessMessageFromClient(ws as WebSocketT, data); // Processing commands from API (client)
+          this.preprocessMessageFromClient(ws as WebSocketT, data); // Processing message from client
         });
 
         ws.on("pong", (data) => {

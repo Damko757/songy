@@ -33,3 +33,7 @@
 
 1. [ ] Add reencoding option (e. g. mp4 -> avi)
 2. [ ] Create trimmer
+
+## Tests
+
+There is target to test at least the whole Downloader module and main API parts (PingableWS and PingingWSS) and communication between them
