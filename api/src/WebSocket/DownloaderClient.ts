@@ -9,61 +9,47 @@ import {
 } from "../../../downloader/src/Commands/Command";
 import chalk from "chalk";
 import { destroyMongoose } from "../Database/MongoDB";
+import { PingableWebSocketClient } from "./PingableWebSocketClient";
+import { PingingWebSocketServer } from "./PingingWebSocketServer";
 
 /**
  * @class For working with Downloader module /container/
  */
-export abstract class DownloaderClient {
-  ws?: WebSocket;
-
-  protected abstract processMessageFromDownloader(
+export class DownloaderClient extends PingableWebSocketClient<
+  DownloaderCommandResponse,
+  DownloaderCommand
+> {
+  processMessageFromServer(
     message: DownloaderCommandResponse
-  ): void;
+  ): Promise<boolean | boolean[]> | boolean {
+    throw new Error("Method not implemented.");
+  }
 
-  /**
-   * Creates connection to downloader
-   * @returns
-   */
-  protected async bindWS(): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      if (this.ws !== undefined) return resolve(false);
-
-      this.ws = new WebSocket(
-        `ws://${ENV.DOCKER == "1" ? "downloader" : "localhost"}:${
-          ENV.DOWNLOADER_WS_PORT
-        }`
-      );
-
-      this.ws
-        .once("error", reject)
-        .on("error", console.error)
-        .once("close", () => {
-          console.log(
-            chalk.redBright("Connection to downloader has been closed")
-          );
-          this.ws = undefined;
-        })
-        .once("open", () => {
-          console.log(chalk.cyan("Connection to downloader has been opened!"));
-          resolve(true);
-        })
-        .on(
-          "message",
-          (message: string) =>
-            this.processMessageFromDownloader(JSON.parse(message)) // Processing left to client
-        );
-    });
+  protected onClose(): void {
+    super.onClose();
+    console.log(chalk.redBright("Connection to downloader has been closed"));
+  }
+  protected onOpen(): void {
+    console.log(chalk.cyan("Connection to downloader has been opened!"));
   }
 
   /**
-   * Encodes and sends message to Command Processor
-   * @param message Message for `CommandProcessor`
+   *
+   * @param processMessageFromServer Handle for message from downloader
    */
-  sendMessageToDownloader(message: DownloaderCommand) {
-    if (!this.ws)
-      throw new Error("Unitialized WebSocket. Please call `bindWS()`");
+  constructor(
+    processMessageFromServer: (
+      message: DownloaderCommandResponse
+    ) => Promise<boolean | boolean[]> | boolean
+  ) {
+    super(
+      `ws://${ENV.DOCKER == "1" ? "downloader" : "localhost"}:${
+        ENV.DOWNLOADER_WS_PORT
+      }`,
+      PingingWebSocketServer.HEATLHCHECK_INTERVAL
+    );
 
-    this.ws.send(JSON.stringify(message));
+    this.processMessageFromServer = processMessageFromServer;
   }
 
   /**
@@ -71,13 +57,18 @@ export abstract class DownloaderClient {
    * @param destroyDownloader
    */
   destroy(destroyDownloader: DestroyT = "finish-all") {
-    // Turning off Downloader Command Processor
-    this.sendMessageToDownloader({
-      action: DownloaderCommandType.EXIT,
-      destroy: destroyDownloader,
+    return new Promise<void>((resolve, reject) => {
+      // Turning off Downloader Command Processor
+      this.sendMessageToServer({
+        action: DownloaderCommandType.EXIT,
+        destroy: destroyDownloader,
+      })
+        .then((success) => {
+          if (!success) return reject("Could not send message to Downloader");
+          super.destroy();
+          resolve();
+        })
+        .catch(reject);
     });
-
-    // Closing Ws
-    this.ws?.close();
   }
 }

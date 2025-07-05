@@ -13,11 +13,20 @@ import {
   ServerMessageType,
 } from "../../../shared/WebSocketCommunicationProtocol";
 import { DestroyT } from "../../../downloader/src/Workers/WorkerPool";
-import { MediaFileModel } from "../Database/Schemas/MediaFile";
+import { MediaFile, MediaFileModel } from "../Database/Schemas/MediaFile";
+import { PingingWebSocketServer } from "./PingingWebSocketServer";
 
-export class APISocketServer extends DownloaderClient {
-  wss?: WebSocketServer;
+interface APISocketClient extends WebSocket {
+  isAlive: boolean;
+}
+
+export class APISocketServer extends PingingWebSocketServer<
+  ServerMessage,
+  ClientMessage,
+  APISocketClient
+> {
   numberOfWorkers: number;
+  downloaderClient: DownloaderClient;
 
   /**
    * Callback for downloader-to-API message
@@ -25,104 +34,60 @@ export class APISocketServer extends DownloaderClient {
    */
   protected processMessageFromDownloader(
     message: DownloaderCommandResponse
-  ): void {
+  ): boolean | Promise<boolean | boolean[]> {
     switch (message.type) {
       case DownloaderCommandResponseType.ERROR:
-        return console.error(message.error);
+        console.error(message.error);
+        return true;
       case DownloaderCommandResponseType.START:
         if (message.numberOfWorkers == 0)
           // Starting downloader if not started
-          this.sendMessageToDownloader({
+          return this.downloaderClient.sendMessageToServer({
             action: DownloaderCommandType.START,
             numberOfWorkers: this.numberOfWorkers,
           });
-        break;
+        return true;
       case DownloaderCommandResponseType.EXIT: // Restarting workers
         console.log(chalk.bgYellow("Restarting workers!"));
-        return this.sendMessageToDownloader({
+        return this.downloaderClient.sendMessageToServer({
           action: DownloaderCommandType.START,
           numberOfWorkers: this.numberOfWorkers,
         });
 
       case DownloaderCommandResponseType.PROGRESS: // Progress update
-        return this.sendToClients(this.wss?.clients, {
+        return this.sendMessageToClients(this.wssClients(), {
           type: ServerMessageType.PROGRESS,
           progresses: message.progresses,
-        }) as void;
+        });
       case DownloaderCommandResponseType.STATE_CHANGE: // This is has new state
-        return this.sendToClients(this.wss?.clients, {
+        return this.sendMessageToClients(this.wssClients(), {
           type: ServerMessageType.STATE_CHANGE,
           id: message.id,
           newState: message.newState,
-        }) as void;
-      case DownloaderCommandResponseType.REFETCH: // This is the newest data for this data
-        MediaFileModel.findById(message.id).then((dato) => {
-          if (dato != null)
-            this.sendToClients(this.wss?.clients, {
-              type: ServerMessageType.DATA,
-              data: dato,
-            });
         });
-        return;
+      case DownloaderCommandResponseType.REFETCH: // Please request data fot this id
+        return this.sendMessageToClients(this.wssClients(), {
+          type: ServerMessageType.REFETCH,
+          id: message.id,
+        });
     }
   }
 
-  /**
-   * Callback for client-to-API message
-   * @param ws Sender Socket
-   * @param message Recieved message
-   */
-  protected processMessageFromClient(
-    ws: WebSocket,
+  processMessageFromClient(
+    ws: APISocketClient,
     message: ClientMessage
-  ): void {}
-
-  /**
-   * Sends `message` to single or multiple specief `clients`
-   * @param clientOrClients Single or multiple WebSockets to send message to
-   * @param message Message for clients
-   * @returns Promise resolved if `message` has been sent to client(s)
-   */
-  protected sendToClients(
-    clientOrClients: WebSocket | Iterable<WebSocket> | undefined,
-    message: ServerMessage
-  ) {
-    if (!clientOrClients) return; // No one to send
-
-    const jsonMessage =
-      typeof message == "string" ? message : JSON.stringify(message); // Not encoding already encoded
-    if (clientOrClients instanceof WebSocket) {
-      return new Promise<boolean>((resolve, reject) => {
-        if (clientOrClients.readyState != WebSocket.OPEN) return resolve(false); // Client not opened
-
-        clientOrClients.send(jsonMessage, (err) => {
-          if (!err) resolve(true);
-          else reject(err);
-        });
-      });
-    }
-
-    // Iterable type - sending to group of clients
-    const promises: Promise<boolean>[] = [];
-    for (const ws of clientOrClients) {
-      promises.push(
-        new Promise((resolve, reject) => {
-          if (ws.readyState != WebSocket.OPEN) return resolve(false);
-
-          ws.send(jsonMessage, (err) => {
-            if (!err) resolve(true);
-            else reject(err);
-          });
-        })
-      );
-    }
-
-    return Promise.all(promises);
+  ): boolean | Promise<boolean> {
+    return true;
   }
 
   constructor(numberOfWorkers: number) {
-    super();
+    super(PingingWebSocketServer.PING_TYPE_FOR_BROWSER, {
+      port: Number(ENV.API_WS_PORT),
+    });
     this.numberOfWorkers = numberOfWorkers;
+    this.downloaderClient = new DownloaderClient((message) =>
+      this.processMessageFromDownloader(message)
+    );
   }
 
   /**
@@ -131,43 +96,27 @@ export class APISocketServer extends DownloaderClient {
    */
   bindWSS() {
     return new Promise<boolean>((resolve, reject) => {
-      super.bindWS().then((newStart) => {
-        if (this.wss) resolve(false);
-
-        this.wss = new WebSocketServer({ port: Number(ENV.API_WS_PORT) });
-        this.wss.on("listening", () => {
-          console.log(
-            chalk.bold.greenBright(
-              `API WSS listening on ${chalk.underline(
-                Number(ENV.API_WS_PORT)
-              )}!`
-            )
-          );
-          resolve(true);
-        });
-        this.wss.on("close", () => {
-          console.log(chalk.bold.redBright("API WSS closed!"));
-          this.wss = undefined;
-        });
-
-        this.wss.on("connection", (ws: WebSocket) => {
-          ws.on("message", (data: string) => {
-            const command = JSON.parse(data) as ClientMessage;
-            this.processMessageFromClient(ws, command); // Processing commands from API (client)
-          });
-        });
-
-        this.wss.once("error", reject);
-        this.wss.on("error", console.error);
-      });
+      this.downloaderClient
+        .bindWS()
+        .then((newStart) => {
+          super
+            .bindWSS()
+            .then((wasAlreadyRunning) => resolve(wasAlreadyRunning))
+            .catch(reject);
+        })
+        .catch(reject);
     });
+  }
+
+  protected onClose(): void {
+    console.log(chalk.bold.redBright("API WSS closed!"));
   }
 
   /**
    * Destroys connection to Downloader and WSS
    */
   destroy(): void {
-    super.destroy("finish-all");
-    this.wss?.close();
+    this.downloaderClient.destroy("finish-all");
+    super.destroy();
   }
 }

@@ -47,7 +47,7 @@ export abstract class PingableWebSocketClient<ServerMessageT, ClientMessageT> {
    */
   abstract processMessageFromServer(
     message: ServerMessageT
-  ): Promise<boolean> | boolean;
+  ): Promise<boolean | boolean[]> | boolean;
 
   /**
    * Creates connection to `wssUrl`
@@ -71,6 +71,7 @@ export abstract class PingableWebSocketClient<ServerMessageT, ClientMessageT> {
           resolve(true);
           this.isAlive = true;
           this.healthcheck();
+          this.onOpen();
         })
         .on("ping", () => (this.isAlive = true)) // Healthcheck ping probably
         .on("pong", (data) => this.onPong("signal", data))
@@ -86,7 +87,9 @@ export abstract class PingableWebSocketClient<ServerMessageT, ClientMessageT> {
    * @param message
    * @returns Parsing status
    */
-  protected async preprocessMessageFromServer(data: any): Promise<boolean> {
+  protected async preprocessMessageFromServer(
+    data: any
+  ): Promise<boolean | boolean[]> {
     try {
       const payload = JSON.parse(data) as ServerMessageT | PingMessage;
       if ((payload as PingMessage).ping == "ping") {
@@ -136,6 +139,11 @@ export abstract class PingableWebSocketClient<ServerMessageT, ClientMessageT> {
    * Method called on WS close
    */
   protected onClose() {}
+
+  /**
+   * Method called on WS open
+   */
+  protected onOpen() {}
 
   /**
    * Method called on WS error

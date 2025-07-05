@@ -19,22 +19,25 @@ export abstract class PingingWebSocketServer<
   ClientMessageT,
   WebSocketT extends WebSocket & { isAlive: boolean }
 > {
+  static HEATLHCHECK_INTERVAL: number = 30_000; // every 30 s checks health
+  static PING_TYPE_FOR_BROWSER: "message" = "message";
+  static PING_TYPE_FOR_NON_BROWSER: "signal" = "signal";
+
   protected wss?: WebSocketServer;
-  protected usePingAsMessage: boolean; ///< Speciefies if should use classic ping or ping as message
+  protected pingType: "message" | "signal"; ///< Speciefies if should use classic ping or ping as message
 
   protected healthcheckTimeout?: NodeJS.Timeout; ///< Reference to timeout scheduling healthchecking
-  protected static HEATLHCHECK_INTERVAL: number = 30_000; // every 30 s checks health
   serverOptions: ServerOptions;
 
   /**
    * Periodically sends ping
    */
   protected healthcheck() {
-    this.clients()?.forEach((client) => {
+    this.wssClients()?.forEach((client) => {
       if (!client.isAlive) return client.terminate(); // Terminate dead client
 
       client.isAlive = false; // Setting as should be dead
-      this.usePingAsMessage
+      this.pingType == "message"
         ? this.sendMessageToClients(client, { ping: "ping" }) // Pinging client via message
         : client.ping(); // Pinging client via low-overhead ping
     });
@@ -49,7 +52,7 @@ export abstract class PingingWebSocketServer<
   /**
    * @returns WSS clients or undefined if wss not started
    */
-  clients(): Set<WebSocketT> | undefined {
+  wssClients(): Set<WebSocketT> | undefined {
     return this.wss?.clients as Set<WebSocketT>;
   }
 
@@ -90,6 +93,7 @@ export abstract class PingingWebSocketServer<
    * Callback for client-to-server message
    * @param ws Sender Socket
    * @param message Recieved message
+   * @returns If processing has been successful
    */
   abstract processMessageFromClient(
     ws: WebSocketT,
@@ -151,8 +155,11 @@ export abstract class PingingWebSocketServer<
    *
    * @param usePingAsMessage Web client should set to true, Browsers *do not* support `onping` event
    */
-  constructor(usePingAsMessage: boolean, serverOptions: ServerOptions) {
-    this.usePingAsMessage = usePingAsMessage;
+  constructor(
+    usePingAsMessage: "message" | "signal",
+    serverOptions: ServerOptions
+  ) {
+    this.pingType = usePingAsMessage;
     this.serverOptions = serverOptions;
   }
 
