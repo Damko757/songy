@@ -66,7 +66,7 @@ export abstract class PingingWebSocketServer<
   protected async preprocessMessageFromClient(
     ws: WebSocketT,
     data: string
-  ): Promise<boolean> {
+  ): Promise<boolean | boolean[]> {
     try {
       const payload = JSON.parse(data) as ClientMessageT | PingMessage;
       if ((payload as PingMessage).ping == "ping") {
@@ -98,7 +98,7 @@ export abstract class PingingWebSocketServer<
   abstract processMessageFromClient(
     ws: WebSocketT,
     message: ClientMessageT
-  ): boolean | Promise<boolean>;
+  ): boolean | Promise<boolean | boolean[]>;
 
   /**
    * Sends `message` to single or multiple specified `clients`
@@ -175,6 +175,7 @@ export abstract class PingingWebSocketServer<
       this.wss.on("error", (e) => this.onError(e));
       this.wss.on("error", reject);
       this.wss.on("listening", () => {
+        this.onListening();
         this.wss?.off("error", reject); // The reject is not needed, connection is successful
         resolve(true);
       });
@@ -185,6 +186,8 @@ export abstract class PingingWebSocketServer<
 
       this.wss.on("connection", (ws: WebSocket) => {
         this.initializeWS(ws);
+        if ((ws as WebSocketT).isAlive === undefined)
+          throw new Error("Unitialized WS. super.initializeWS called?");
 
         ws.on("message", (data: string) => {
           this.preprocessMessageFromClient(ws as WebSocketT, data); // Processing message from client
@@ -220,6 +223,11 @@ export abstract class PingingWebSocketServer<
    * On WSS close
    */
   protected onClose() {}
+
+  /**
+   * On WSS listening starts
+   */
+  protected onListening() {}
 
   /**
    * Callback to Pong message or signal

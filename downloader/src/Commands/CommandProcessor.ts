@@ -14,12 +14,20 @@ import {
   MediaFileModel,
   MediaFileState,
 } from "../../../api/src/Database/Schemas/MediaFile.js";
+import { PingingWebSocketServer } from "../../../api/src/WebSocket/PingingWebSocketServer.js";
+
+interface CommandProcessorWebSocket extends WebSocket {
+  isAlive: boolean;
+}
 
 /**
  * Listens to commands and dispatches events (WorkerPool download progress, finished) to clients
  */
-export class CommandProcessor {
-  protected wss: WebSocketServer; ///< WebSocketServer
+export class CommandProcessor extends PingingWebSocketServer<
+  DownloaderCommandResponse,
+  DownloaderCommand,
+  CommandProcessorWebSocket
+> {
   protected workerPool?: WorkerPool; ///< Pool of workers doing the actual hard work
 
   // Saving ID as key and in value save processing time when sending to client (no need to map)
@@ -29,11 +37,9 @@ export class CommandProcessor {
   >();
 
   constructor() {
-    this.wss = new WebSocketServer({
+    super(PingingWebSocketServer.PING_TYPE_FOR_NON_BROWSER, {
       port: Number(process.env.DOWNLOADER_WS_PORT),
     });
-
-    this.bindWSS();
   }
 
   /**
@@ -59,95 +65,88 @@ export class CommandProcessor {
     }, 500);
   }
 
-  /**
-   * Binds event listeners on wss instance
-   */
-  protected bindWSS() {
-    this.wss.on("listening", () =>
-      console.log(
-        chalk.bold.greenBright(
-          `Command WSS listening on ${chalk.underline(
-            Number(process.env.DOWNLOADER_WS_PORT)
-          )}!`
-        )
+  protected onListening(): void {
+    console.log(
+      chalk.bold.greenBright(
+        `Command WSS listening on ${chalk.underline(
+          Number(process.env.DOWNLOADER_WS_PORT)
+        )}!`
       )
     );
-    this.wss.on("close", () =>
-      console.log(chalk.bold.redBright("Command WSS closed!"))
-    );
-
-    this.wss.on("connection", (ws: WebSocket) => {
-      ws.on("message", (data: string) => {
-        const command = JSON.parse(data) as DownloaderCommand;
-        this.processCommand(ws, command); // Processing commands from API (client)
-      });
-
-      // Notyfing about current number of workers
-      this.sendResponse(ws, {
-        type: DownloaderCommandResponseType.START,
-        numberOfWorkers: this.workerPool?.size ?? 0,
-      });
-    });
+  }
+  protected onClose(): void {
+    console.log(chalk.bold.redBright("Command WSS closed!"));
   }
 
-  /**
-   * Processes command from WebSocket
-   * @param command Command from Client's message
-   */
-  protected processCommand(ws: WebSocket, command: DownloaderCommand) {
-    switch (command.action) {
+  protected initializeWS(ws: WebSocket): CommandProcessorWebSocket {
+    super.initializeWS(ws); // Needs to initialize for pinging
+
+    // Notyfing about current number of workers
+    this.sendMessageToClients(ws as CommandProcessorWebSocket, {
+      type: DownloaderCommandResponseType.START,
+      numberOfWorkers: this.workerPool?.size ?? 0,
+    });
+
+    return ws as CommandProcessorWebSocket;
+  }
+
+  processMessageFromClient(
+    ws: CommandProcessorWebSocket,
+    message: DownloaderCommand
+  ): boolean | Promise<boolean | boolean[]> {
+    switch (message.action) {
       case DownloaderCommandType.START:
         if (this.workerPool !== undefined) {
           // WP already started
-          this.sendResponse(ws, {
+          return this.sendMessageToClients(ws, {
             type: DownloaderCommandResponseType.ERROR,
             error: "WorkerPool already created!",
           });
-
-          return;
         }
-        this.workerPool = new WorkerPool(command.numberOfWorkers);
-        this.sendResponse(this.wss.clients, {
+        this.workerPool = new WorkerPool(message.numberOfWorkers);
+        return this.sendMessageToClients(this.wssClients(), {
           type: DownloaderCommandResponseType.START,
           numberOfWorkers: this.workerPool.size,
         });
-        return;
       case DownloaderCommandType.EXIT:
         // Exiting and notifying API
-        this.workerPool
-          ?.destroy(command.destroy ?? "finish-all")
-          .then(() => {
-            this.workerPool = undefined;
-            this.sendResponse(ws, { type: DownloaderCommandResponseType.EXIT });
-          })
-          .catch((e) =>
-            this.sendResponse(ws, {
-              type: DownloaderCommandResponseType.ERROR,
-              error: e,
+        return new Promise<boolean>((resolve) => {
+          this.workerPool
+            ?.destroy(message.destroy ?? "finish-all")
+            .then(async () => {
+              this.workerPool = undefined;
+              resolve(
+                await this.sendMessageToClients(ws, {
+                  type: DownloaderCommandResponseType.EXIT,
+                })
+              );
             })
-          );
-
-        return;
-      case DownloaderCommandType.DOWNLOAD:
-        if (!this.workerPool) {
-          const error: DownloaderCommandResponse = {
-            type: DownloaderCommandResponseType.ERROR,
-            error: "WorkerPool not started!",
-          };
-          this.sendResponse(ws, error);
-          return;
-        }
-
-        this.workerPool.addJob({
-          job: { ...command, action: "download" },
-          handlers: {
-            start: (msg) => this.onDownloadStart(command._id, msg), // Start singal
-            progress: (msg) => this.onDownloadProgress(command._id, msg), // Progression callback
-            end: (msg) => this.onDownloadEnd(command._id, msg), // Finished callaback
-          },
+            .catch(async (e) =>
+              resolve(
+                await this.sendMessageToClients(ws, {
+                  type: DownloaderCommandResponseType.ERROR,
+                  error: e,
+                })
+              )
+            );
         });
 
-        return; // Ok
+      case DownloaderCommandType.DOWNLOAD:
+        if (!this.workerPool) {
+          return this.sendMessageToClients(ws, {
+            type: DownloaderCommandResponseType.ERROR,
+            error: "WorkerPool not started!",
+          });
+        }
+
+        return this.workerPool.addJob({
+          job: { ...message, action: "download" },
+          handlers: {
+            start: (msg) => this.onDownloadStart(message._id, msg), // Start singal
+            progress: (msg) => this.onDownloadProgress(message._id, msg), // Progression callback
+            end: (msg) => this.onDownloadEnd(message._id, msg), // Finished callaback
+          },
+        });
     }
   }
 
@@ -186,7 +185,7 @@ export class CommandProcessor {
     // WIll try every 1 sec and every request
 
     // EveryRequest
-    this.sendResponse(this.wss.clients, {
+    this.sendMessageToClients(this.wssClients(), {
       type: DownloaderCommandResponseType.PROGRESS,
       progresses: [...this.downloadStatuses.values()],
     });
@@ -216,7 +215,7 @@ export class CommandProcessor {
     // Marking in MongoDB
     MediaFileModel.findByIdAndUpdate(id, { state: newState });
     // Notifying clients
-    this.sendResponse(this.wss.clients, {
+    this.sendMessageToClients(this.wssClients(), {
       type: DownloaderCommandResponseType.STATE_CHANGE,
       id: id,
       newState: newState,
@@ -224,58 +223,11 @@ export class CommandProcessor {
   }
 
   /**
-   * Sends response `message` to `ws` o
-   * @param ws Websocket or Websockets to send message to
-   * @param message Response object to send to client/ws
-   * @returns Promise resolve upon write off of the data
-   */
-  protected sendResponse(
-    ws: WebSocket,
-    message: DownloaderCommandResponse | string
-  ): Promise<boolean>;
-  protected sendResponse(
-    ws: Iterable<WebSocket>,
-    message: DownloaderCommandResponse
-  ): Promise<boolean[]>;
-  protected sendResponse(
-    ws: WebSocket | Iterable<WebSocket>,
-    message: DownloaderCommandResponse | string
-  ): Promise<boolean> | Promise<boolean[]> {
-    // Converting to string if object
-    const data = typeof message == "string" ? message : JSON.stringify(message);
-
-    // Sending to single client
-    if (ws instanceof WebSocket) {
-      return new Promise<boolean>((resolve, reject) => {
-        if (ws.readyState != WebSocket.OPEN) resolve(false);
-
-        ws.send(data, (err) => {
-          if (!err) resolve(true);
-          else reject(err);
-        });
-      });
-    }
-    // Sending to all clients
-    else {
-      return new Promise<boolean[]>((resolve, reject) => {
-        const promises: Promise<boolean>[] = [];
-        // Send to each client
-        for (const client of ws as Iterable<WebSocket>) {
-          promises.push(this.sendResponse(client, data));
-        }
-
-        // Resolve upon all written off
-        Promise.all(promises)
-          .then((results) => resolve(results))
-          .catch(reject);
-      });
-    }
-  }
-
-  /**
-   * Destroys WSS and MongoDB connections
+   * Destroys WSS and WorkerPool
    */
   destroy() {
-    this.wss.close();
+    if (this.workerPool && this.workerPool.getDestroyState() != "none")
+      this.workerPool.destroy("finish-all");
+    super.destroy();
   }
 }

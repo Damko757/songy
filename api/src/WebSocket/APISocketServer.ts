@@ -12,8 +12,6 @@ import {
   ServerMessage,
   ServerMessageType,
 } from "../../../shared/WebSocketCommunicationProtocol";
-import { DestroyT } from "../../../downloader/src/Workers/WorkerPool";
-import { MediaFile, MediaFileModel } from "../Database/Schemas/MediaFile";
 import { PingingWebSocketServer } from "./PingingWebSocketServer";
 
 interface APISocketClient extends WebSocket {
