@@ -19,6 +19,8 @@ export class DownloaderClient extends PingableWebSocketClient<
   DownloaderCommandResponse,
   DownloaderCommand
 > {
+  connectionRetryTimeout?: NodeJS.Timeout; // Timeout for retrying connection
+
   processMessageFromServer(
     message: DownloaderCommandResponse
   ): Promise<boolean | boolean[]> | boolean {
@@ -28,6 +30,11 @@ export class DownloaderClient extends PingableWebSocketClient<
   protected onClose(): void {
     super.onClose();
     console.log(chalk.redBright("Connection to downloader has been closed"));
+
+    // Simple connection retrying
+    this.connectionRetryTimeout = setTimeout(async () => {
+      this.bindWS().catch(console.error);
+    }, 5_000);
   }
   protected onOpen(): void {
     console.log(chalk.cyan("Connection to downloader has been opened!"));
@@ -57,6 +64,8 @@ export class DownloaderClient extends PingableWebSocketClient<
    * @param destroyDownloader
    */
   destroy(destroyDownloader: DestroyT = "finish-all") {
+    clearTimeout(this.connectionRetryTimeout);
+
     return new Promise<void>((resolve, reject) => {
       // Turning off Downloader Command Processor
       this.sendMessageToServer({
