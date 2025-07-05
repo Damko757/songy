@@ -4,15 +4,17 @@ import type { RoutingMap } from "../Utils/Router";
 import { RoutableController } from "./Controller";
 
 /**
- * Controller for downloading mediafiles (with download options and metadata)
+ * Controller for accessing MediaFiles
  */
-export class DownloadController extends RoutableController {
+export class LibraryContoroller extends RoutableController {
   // TODO
-
   routes(): RoutingMap {
     return {
-      "/download/:link": {
-        POST: () => {},
+      "/library/:id": {
+        GET: () => {}, // Gets DB entry
+      },
+      "/library/file/:id": {
+        GET: () => {}, // Downloads file to device
       },
     };
   }
