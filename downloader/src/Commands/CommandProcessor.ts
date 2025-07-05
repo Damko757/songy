@@ -224,10 +224,18 @@ export class CommandProcessor extends PingingWebSocketServer<
 
   /**
    * Destroys WSS and WorkerPool
+   * @returns Promise resolved upon finished worker pool destroy
    */
   destroy() {
-    if (this.workerPool && this.workerPool.getDestroyState() != "none")
-      this.workerPool.destroy("finish-all");
-    super.destroy();
+    return new Promise<void>((resolve, reject) => {
+      super.destroy();
+
+      if (this.workerPool && this.workerPool.getDestroyState() == "none") {
+        this.workerPool.destroy("finish-all").then(resolve).catch(reject);
+        return;
+      }
+
+      resolve();
+    });
   }
 }
